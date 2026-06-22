@@ -1,0 +1,2979 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Interativo Floresta Fóssil de Altos </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bubblegum+Sans&family=Nunito:wght@400;600;700;800&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================
+           CSS VARIABLES & RESET
+           ============================================ */
+        :root {
+            --norte: #FF6B6B;
+            --norte-light: #ff9a9a;
+            --norte-dark: #e84545;
+            --centro-norte: #4ECDC4;
+            --centro-norte-light: #7eddd6;
+            --centro-norte-dark: #36b5ad;
+            --sudeste: #FFD93D;
+            --sudeste-light: #ffe682;
+            --sudeste-dark: #f0c400;
+            --sudoeste: #6BCB77;
+            --sudoeste-light: #95dca0;
+            --sudoeste-dark: #4fb85b;
+            --bg-cream: #FFF8E7;
+            --bg-warm: #FFF3D6;
+            --text-dark: #2C3E50;
+            --text-medium: #5D6D7E;
+            --white: #FFFFFF;
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-medium: 0 8px 32px rgba(0,0,0,0.12);
+            --shadow-card: 0 6px 24px rgba(0,0,0,0.1);
+            --radius-large: 24px;
+            --radius-medium: 16px;
+            --radius-small: 10px;
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-cream);
+            color: var(--text-dark);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ============================================
+           BACKGROUND TEXTURE
+           ============================================ */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(255,107,107,0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(78,205,196,0.06) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(255,217,61,0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 30h60M30 0v60' stroke='%23e8dcc8' stroke-width='0.5' fill='none' opacity='0.3'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        /* ============================================
+           ANIMATIONS
+           ============================================ */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-12px); }
+        }
+
+        @keyframes float-slow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(3deg); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 6px rgba(255,255,255,0.3)); }
+            50% { filter: drop-shadow(0 0 18px rgba(255,255,255,0.7)); }
+        }
+
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slide-in-left {
+            from { opacity: 0; transform: translateX(-40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slide-in-right {
+            from { opacity: 0; transform: translateX(40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes bounce-soft {
+            0%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-6px); }
+            60% { transform: translateY(-3px); }
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-3deg); }
+            75% { transform: rotate(3deg); }
+        }
+
+        @keyframes cloud-drift {
+            0% { transform: translateX(-20px); }
+            100% { transform: translateX(20px); }
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes title-wave {
+            0%, 100% { transform: translateY(0) rotate(-2deg); }
+            50% { transform: translateY(-5px) rotate(2deg); }
+        }
+
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        .animate-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ============================================
+           HEADER / HERO
+           ============================================ */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .hero-decorations {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .deco-cloud {
+            position: absolute;
+            opacity: 0.15;
+            animation: cloud-drift 8s ease-in-out infinite alternate;
+        }
+
+        .deco-cloud:nth-child(1) { top: 8%; left: 5%; animation-duration: 10s; }
+        .deco-cloud:nth-child(2) { top: 12%; right: 8%; animation-duration: 7s; animation-delay: -3s; }
+        .deco-cloud:nth-child(3) { top: 25%; left: 80%; animation-duration: 12s; animation-delay: -5s; }
+        .deco-cloud:nth-child(4) { bottom: 15%; left: 10%; animation-duration: 9s; animation-delay: -2s; }
+
+        .deco-star {
+            position: absolute;
+            width: 20px; height: 20px;
+            animation: sparkle 3s ease-in-out infinite;
+        }
+
+        .deco-star:nth-child(5) { top: 15%; left: 15%; animation-delay: 0s; }
+        .deco-star:nth-child(6) { top: 20%; right: 20%; animation-delay: 1s; }
+        .deco-star:nth-child(7) { top: 50%; left: 8%; animation-delay: 2s; }
+        .deco-star:nth-child(8) { bottom: 20%; right: 12%; animation-delay: 0.5s; }
+        .deco-star:nth-child(9) { top: 35%; right: 5%; animation-delay: 1.5s; }
+
+        .hero-title {
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            text-align: center;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 2;
+            /*background: linear-gradient(135deg, var(--norte), var(--centro-norte), var(--sudeste), var(--sudoeste));
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            /*animation: title-wave 4s ease-in-out infinite;*/
+            text-shadow: none;
+            letter-spacing: 2px;
+        }
+
+        .hero-subtitle {
+            font-family: 'Nunito', sans-serif;
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            font-weight: 600;
+            color: var(--text-medium);
+            text-align: center;
+            margin-bottom: 40px;
+            z-index: 2;
+            position: relative;
+        }
+
+        .hero-subtitle span {
+            display: inline-block;
+            animation: bounce-soft 2s ease-in-out infinite;
+        }
+
+        .hero-hint {
+            font-family: 'Nunito', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-medium);
+            text-align: center;
+            margin-top: 24px;
+            z-index: 2;
+            position: relative;
+            animation: bounce-soft 2.5s ease-in-out infinite;
+            background: rgba(255,255,255,0.7);
+            padding: 10px 24px;
+            border-radius: 30px;
+            border: 2px dashed var(--centro-norte);
+        }
+
+        .hero-hint svg {
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        /* ============================================
+           MAP CONTAINER
+           ============================================ */
+        .map-container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .map-svg-wrapper {
+            position: relative;
+            filter: drop-shadow(0 8px 30px rgba(0,0,0,0.15));
+        }
+
+        .map-svg-wrapper svg {
+            width: 100%;
+            height: auto;
+            cursor: default;
+        }
+
+        /* ============================================
+           FLOATING PANEL
+           ============================================ */
+        .floating-panel {
+            position: absolute;
+            left: -280px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 240px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,248,231,0.95));
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius-medium);
+            padding: 24px 20px;
+            box-shadow: var(--shadow-medium);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(78, 205, 196, 0.3);
+            z-index: 10;
+        }
+            <p class="hero-hint">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
+                Clique em uma regiao do mapa para explorar!
+            </p>
+            left: -270px;
+        }
+
+        .floating-panel-title {
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: 1.2rem;
+            color: var(--centro-norte);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .floating-panel-content {
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .floating-panel-content strong {
+            color: var(--centro-norte);
+            font-weight: 700;
+        }
+
+        .floating-panel-hint {
+            font-size: 0.8rem;
+            color: var(--text-medium);
+            font-style: italic;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.08);
+            margin-top: 12px;
+        }
+
+        /* Map region styles */
+        .map-region {
+            cursor: pointer;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+            stroke: var(--white);
+            stroke-width: 2.5;
+            stroke-linejoin: round;
+        }
+
+        .map-region:hover {
+            filter: brightness(1.15) saturate(1.2);
+            transform: scale(1.03);
+            stroke-width: 4;
+            stroke: var(--white);
+        }
+
+        .map-region:active {
+            transform: scale(0.98);
+        }
+
+        .map-label {
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: 13px;
+            fill: var(--white);
+            pointer-events: none;
+            text-anchor: middle;
+            paint-order: stroke;
+            stroke: rgba(0,0,0,0.3);
+            stroke-width: 3px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            font-weight: 400;
+        }
+
+        .map-icon {
+            pointer-events: none;
+            animation: float-slow 4s ease-in-out infinite;
+            filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.2));
+        }
+
+        .map-icon:nth-of-type(2) { animation-delay: -1s; }
+        .map-icon:nth-of-type(3) { animation-delay: -2s; }
+        .map-icon:nth-of-type(4) { animation-delay: -3s; }
+
+        /* ============================================
+           SECTIONS
+           ============================================ */
+        .section {
+            position: relative;
+            z-index: 1;
+            padding: 80px 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: -60px; left: 0;
+            width: 100%;
+            height: 80px;
+            z-index: 2;
+        }
+
+        .section-norte { background: linear-gradient(175deg, #fff0f0 0%, #ffe8e8 50%, #ffd4d4 100%); }
+        .section-centro-norte { background: linear-gradient(175deg, #e8faf8 0%, #d4f5f1 50%, #c0f0eb 100%); }
+        .section-sudeste { background: linear-gradient(175deg, #fff9e0 0%, #fff3c4 50%, #ffecaa 100%); }
+        .section-sudoeste { background: linear-gradient(175deg, #e8f8ea 0%, #d4f1d8 50%, #c0eac6 100%); }
+
+        .section-norte::before {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 80'%3E%3Cpath d='M0,40 C360,80 720,0 1080,50 C1260,65 1360,30 1440,40 L1440,80 L0,80 Z' fill='%23fff0f0'/%3E%3C/svg%3E") no-repeat bottom;
+            background-size: 100% 100%;
+        }
+        .section-centro-norte::before {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 80'%3E%3Cpath d='M0,50 C240,10 480,70 720,30 C960,0 1200,60 1440,40 L1440,80 L0,80 Z' fill='%23e8faf8'/%3E%3C/svg%3E") no-repeat bottom;
+            background-size: 100% 100%;
+        }
+        .section-sudeste::before {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 80'%3E%3Cpath d='M0,30 C180,70 540,10 720,50 C900,80 1260,20 1440,45 L1440,80 L0,80 Z' fill='%23fff9e0'/%3E%3C/svg%3E") no-repeat bottom;
+            background-size: 100% 100%;
+        }
+        .section-sudoeste::before {
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 80'%3E%3Cpath d='M0,60 C300,20 600,70 900,30 C1100,10 1300,50 1440,35 L1440,80 L0,80 Z' fill='%23e8f8ea'/%3E%3C/svg%3E") no-repeat bottom;
+            background-size: 100% 100%;
+        }
+
+        .section-card {
+            background: var(--white);
+            border-radius: var(--radius-large);
+            box-shadow: var(--shadow-card);
+            max-width: 900px;
+            width: 100%;
+            padding: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-card.locked {
+            opacity: 0.58;
+            filter: grayscale(0.12);
+        }
+
+        .section-card.locked::after {
+            content: '🔒 Atividade liberada apenas após concluir a anterior';
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            background: rgba(44,62,80,0.92);
+            color: #ffffff;
+            font-size: 0.82rem;
+            padding: 8px 12px;
+            border-radius: 999px;
+            white-space: nowrap;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.16);
+        }
+
+        .section-card.locked .back-to-map,
+        .section-card.locked button:not(.video-link),
+        .section-card.locked textarea,
+        .section-card.locked .image-thumb {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .section-card.locked .video-link {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .section-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 6px;
+        }
+
+        .section-norte .section-card::before { background: linear-gradient(90deg, var(--norte), var(--norte-light)); }
+        .section-centro-norte .section-card::before { background: linear-gradient(90deg, var(--centro-norte), var(--centro-norte-light)); }
+        .section-sudeste .section-card::before { background: linear-gradient(90deg, var(--sudeste), var(--sudeste-light)); }
+        .section-sudoeste .section-card::before { background: linear-gradient(90deg, var(--sudoeste), var(--sudoeste-light)); }
+
+        .section-card::after {
+            content: '';
+            position: absolute;
+            bottom: -40px; right: -40px;
+            width: 160px; height: 160px;
+            border-radius: 50%;
+            opacity: 0.06;
+        }
+
+        .section-norte .section-card::after { background: var(--norte); }
+        .section-centro-norte .section-card::after { background: var(--centro-norte); }
+        .section-sudeste .section-card::after { background: var(--sudeste); }
+        .section-sudoeste .section-card::after { background: var(--sudoeste); }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .section-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            flex-shrink: 0;
+            animation: float-slow 3s ease-in-out infinite;
+        }
+
+        .section-norte .section-icon { background: linear-gradient(135deg, var(--norte), var(--norte-light)); }
+        .section-centro-norte .section-icon { background: linear-gradient(135deg, var(--centro-norte), var(--centro-norte-light)); }
+        .section-sudeste .section-icon { background: linear-gradient(135deg, var(--sudeste), var(--sudeste-light)); }
+        .section-sudoeste .section-icon { background: linear-gradient(135deg, var(--sudoeste), var(--sudoeste-light)); }
+
+        .section-title {
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: clamp(1.6rem, 4vw, 2.4rem);
+            line-height: 1.2;
+        }
+
+        .section-norte .section-title { color: var(--norte-dark); }
+        .section-centro-norte .section-title { color: var(--centro-norte-dark); }
+        .section-sudeste .section-title { color: var(--sudeste-dark); }
+        .section-sudoeste .section-title { color: var(--sudoeste-dark); }
+
+        /* Content grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .content-block {
+            padding: 24px;
+            border-radius: var(--radius-medium);
+            background: rgba(0,0,0,0.02);
+            border: 2px solid rgba(0,0,0,0.04);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .content-block:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .content-block-title {
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .content-block-title .emoji {
+            font-size: 1.4rem;
+        }
+
+        .content-block p, .content-block ul {
+            font-size: 0.95rem;
+            color: var(--text-medium);
+            line-height: 1.7;
+        }
+
+        .video-links {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .video-link {
+            background: linear-gradient(135deg, rgba(78,205,196,0.15), rgba(255,217,61,0.15));
+            border: 2px solid rgba(78,205,196,0.3);
+            border-radius: 14px;
+            padding: 14px 16px;
+            color: var(--text-dark);
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: left;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .video-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+        }
+
+        .video-help {
+            font-size: 0.95rem;
+            color: var(--text-medium);
+            margin-top: 12px;
+        }
+
+        .video-links {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .video-link {
+            background: linear-gradient(135deg, rgba(78,205,196,0.15), rgba(255,217,61,0.15));
+            border: 2px solid rgba(78,205,196,0.3);
+            border-radius: 14px;
+            padding: 14px 16px;
+            color: var(--text-dark);
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: left;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .video-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+        }
+
+        .video-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.78);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 1100;
+        }
+
+        .video-modal.active {
+            display: flex;
+        }
+
+        .video-modal-content {
+            width: min(1100px, 100%);
+            background: var(--white);
+            border-radius: 24px;
+            padding: 16px;
+            box-shadow: var(--shadow-medium);
+            position: relative;
+            max-height: calc(100vh - 32px);
+            height: calc(100vh - 32px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .video-modal-frame {
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+            background: #000;
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        .video-modal-frame iframe {
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            border: 0;
+        }
+
+        .video-modal-header {
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .video-player-note {
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.95rem;
+            color: var(--text-medium);
+            line-height: 1.5;
+        }
+
+        .video-player-link {
+            display: inline-block;
+            padding: 12px 18px;
+            background: linear-gradient(135deg, rgba(78,205,196,0.2), rgba(255,217,61,0.2));
+            border: 2px solid rgba(78,205,196,0.4);
+            border-radius: 14px;
+            color: var(--text-dark);
+            font-weight: 700;
+            text-decoration: none;
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            align-self: flex-start;
+        }
+
+        .video-player-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+        }
+
+        .video-modal-close {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.95);
+            color: var(--text-dark);
+            font-size: 1.4rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .video-modal-frame {
+            width: 100%;
+            min-height: 65vh;
+            max-height: calc(100vh - 220px);
+            background: #000;
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        .video-modal-frame iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        /* Locked modal styles */
+        .locked-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.48);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            padding: 20px;
+        }
+
+        .locked-modal.active {
+            display: flex;
+        }
+
+        .locked-modal-content {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 18px 20px;
+            box-shadow: var(--shadow-medium);
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+        }
+
+        .locked-modal-close {
+            position: absolute;
+            right: 10px;
+            top: 8px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(0,0,0,0.06);
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .locked-modal-body {
+            display:flex;
+            gap:14px;
+            align-items:center;
+            justify-content:center;
+            padding: 8px 6px;
+        }
+
+        .locked-modal-icon {
+            font-size: 36px;
+        }
+
+        .locked-modal-text {
+            font-family: 'Nunito',sans-serif;
+            font-weight:700;
+            color:var(--text-dark);
+            font-size:1rem;
+            text-align:left;
+        }
+
+        .content-block ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .content-block ul li {
+            padding: 4px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .content-block ul li::before {
+            content: '★';
+            position: absolute;
+            left: 0;
+            font-size: 0.7rem;
+        }
+
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .image-thumb {
+            background: none;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 16px;
+            padding: 0;
+            cursor: pointer;
+            overflow: hidden;
+            transition: transform 0.25s ease, border-color 0.25s ease;
+            width: 100%;
+            display: inline-flex;
+            min-height: 0;
+        }
+
+        .image-thumb:hover {
+            transform: translateY(-2px);
+            border-color: rgba(78,205,196,0.7);
+        }
+
+        .image-thumb img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+        }
+
+        .image-lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 999;
+        }
+
+        .image-lightbox.visible {
+            display: flex;
+        }
+
+        .image-lightbox img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 18px;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+        }
+
+        .image-lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 42px;
+            height: 42px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.95);
+            color: var(--text-dark);
+            font-size: 1.4rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .section-norte .content-block ul li::before { color: var(--norte); }
+        .section-centro-norte .content-block ul li::before { color: var(--centro-norte); }
+        .section-sudeste .content-block ul li::before { color: var(--sudeste); }
+        .section-sudoeste .content-block ul li::before { color: var(--sudoeste); }
+
+        .curiosidade-box {
+            padding: 20px 24px;
+            border-radius: var(--radius-medium);
+            margin-bottom: 32px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .section-norte .curiosidade-box { background: rgba(255,107,107,0.1); border-left: 4px solid var(--norte); }
+        .section-centro-norte .curiosidade-box { background: rgba(78,205,196,0.1); border-left: 4px solid var(--centro-norte); }
+        .section-sudeste .curiosidade-box { background: rgba(255,217,61,0.12); border-left: 4px solid var(--sudeste); }
+        .section-sudoeste .curiosidade-box { background: rgba(107,203,119,0.1); border-left: 4px solid var(--sudoeste); }
+
+        .curiosidade-box .emoji {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        /* ============================================
+           QUIZ
+           ============================================ */
+        .quiz-container {
+            padding: 28px;
+            border-radius: var(--radius-medium);
+            background: linear-gradient(135deg, rgba(0,0,0,0.02), rgba(0,0,0,0.05));
+            border: 2px dashed rgba(0,0,0,0.1);
+        }
+
+        .quiz-title {
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quiz-question {
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 16px;
+            color: var(--text-dark);
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quiz-option {
+            padding: 14px 20px;
+            border-radius: var(--radius-small);
+            background: var(--white);
+            border: 2px solid rgba(0,0,0,0.08);
+            cursor: pointer;
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.25s ease;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-option:hover:not(.selected) {
+            border-color: rgba(0,0,0,0.15);
+            background: rgba(0,0,0,0.02);
+            transform: translateX(4px);
+        }
+
+        .quiz-option.correct {
+            background: #e8f5e9;
+            border-color: #4caf50;
+            color: #2e7d32;
+        }
+
+        .quiz-option.correct::after {
+            content: '✓';
+            position: absolute;
+            right: 16px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #4caf50;
+        }
+
+        .quiz-option.wrong {
+            background: #fce4ec;
+            border-color: #ef5350;
+            color: #c62828;
+        }
+
+        .quiz-option.wrong::after {
+            content: '✗';
+            position: absolute;
+            right: 16px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #ef5350;
+        }
+
+        .quiz-option.selected {
+            pointer-events: none;
+        }
+
+        .quiz-option .option-letter {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .section-norte .quiz-option .option-letter { background: rgba(255,107,107,0.15); color: var(--norte-dark); }
+        .section-centro-norte .quiz-option .option-letter { background: rgba(78,205,196,0.15); color: var(--centro-norte-dark); }
+        .section-sudeste .quiz-option .option-letter { background: rgba(255,217,61,0.2); color: var(--sudeste-dark); }
+        .section-sudoeste .quiz-option .option-letter { background: rgba(107,203,119,0.15); color: var(--sudoeste-dark); }
+
+        .quiz-feedback {
+            margin-top: 16px;
+            padding: 14px 20px;
+            border-radius: var(--radius-small);
+            font-weight: 700;
+            display: none;
+            animation: slide-up 0.3s ease;
+        }
+
+        .quiz-feedback.show { display: block; }
+        .quiz-feedback.correct { background: #e8f5e9; color: #2e7d32; }
+        .quiz-feedback.wrong { background: #fce4ec; color: #c62828; }
+
+        .quiz-next-btn {
+            display: none;
+            margin-top: 14px;
+            padding: 12px 28px;
+            border-radius: 30px;
+            border: none;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: var(--white);
+            transition: all 0.3s ease;
+        }
+
+        .quiz-next-btn.show { display: inline-block; }
+
+        .section-norte .quiz-next-btn { background: var(--norte); }
+        .section-centro-norte .quiz-next-btn { background: var(--centro-norte); }
+        .section-sudeste .quiz-next-btn { background: var(--sudeste-dark); color: var(--text-dark); }
+        .section-sudoeste .quiz-next-btn { background: var(--sudoeste); }
+
+        .quiz-next-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+
+        .quiz-score {
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: 1.3rem;
+            text-align: center;
+            padding: 20px;
+            animation: slide-up 0.4s ease;
+        }
+
+        /* ============================================
+           BACK TO MAP BUTTON
+           ============================================ */
+        .back-to-map {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 28px;
+            padding: 14px 32px;
+            border-radius: 30px;
+            background: var(--text-dark);
+            color: var(--white);
+            text-decoration: none;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            animation: bounce-soft 3s ease-in-out infinite;
+        }
+
+        .back-to-map:hover {
+            transform: scale(1.06) translateY(-2px);
+            box-shadow: 0 6px 20px rgba(44,62,80,0.3);
+        }
+
+        .back-to-map svg {
+            transition: transform 0.3s ease;
+        }
+
+        .back-to-map:hover svg {
+            transform: translateX(-4px);
+        }
+
+        .save-note-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--centro-norte), var(--sudeste));
+            color: var(--white);
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-medium);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            margin-top: 16px;
+        }
+
+        .save-note-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(0,0,0,0.16);
+        }
+
+        .save-note-status {
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.9rem;
+            color: var(--centro-norte-dark);
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        /* ============================================
+           FOOTER
+           ============================================ */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            background: var(--text-dark);
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer-title {
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: 1.3rem;
+            color: var(--white);
+            margin-bottom: 8px;
+        }
+
+        .footer-hearts {
+            margin-top: 8px;
+            font-size: 1.1rem;
+        }
+
+        .footer-hearts span {
+            display: inline-block;
+            animation: float-slow 2s ease-in-out infinite;
+        }
+
+        .footer-hearts span:nth-child(2) { animation-delay: 0.3s; }
+        .footer-hearts span:nth-child(3) { animation-delay: 0.6s; }
+
+        /* ============================================
+           RESPONSIVO
+           ============================================ */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 30px 16px;
+                min-height: auto;
+                padding-top: 60px;
+                padding-bottom: 40px;
+            }
+
+            .section {
+                padding: 60px 16px;
+                min-height: auto;
+            }
+
+            .section-card {
+                padding: 28px 20px;
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .section-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .section-icon {
+                width: 56px;
+                height: 56px;
+                font-size: 26px;
+            }
+
+            .map-container {
+                max-width: 95%;
+            }
+
+            .map-label {
+                font-size: 10px;
+            }
+
+            .quiz-option {
+                padding: 12px 16px;
+                font-size: 0.9rem;
+            }
+
+            .deco-cloud, .deco-star {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .section-title {
+                font-size: 1.4rem;
+            }
+
+            .content-block {
+                padding: 18px;
+            }
+        }
+
+        /* ============================================
+           TOOLTIP
+           ============================================ */
+        .map-tooltip {
+            position: fixed;
+            padding: 8px 16px;
+            background: var(--text-dark);
+            color: var(--white);
+            border-radius: 8px;
+            font-family: 'Bubblegum Sans', cursive;
+            font-size: 0.95rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 100;
+            white-space: nowrap;
+        }
+
+        .map-tooltip.visible {
+            opacity: 1;
+        }
+
+        .map-tooltip::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid var(--text-dark);
+        }
+
+        /* ============================================
+           SIDE MENU - LINKS EXTERNOS
+           ============================================ */
+        .side-menu {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            z-index: 90;
+            animation: slide-in-right 0.6s ease-out;
+        }
+
+        .side-menu-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+            color: var(--text-dark);
+            text-decoration: none;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: var(--shadow-medium);
+            font-size: 28px;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+            border: 3px solid var(--white);
+        }
+
+        .side-menu-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--norte), var(--centro-norte));
+            border-radius: 50%;
+            z-index: -1;
+            transition: left 0.4s ease;
+        }
+
+        .side-menu-link:hover {
+            transform: scale(1.15) translateX(-12px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+            color: var(--white);
+        }
+
+        .side-menu-link:hover::before {
+            left: 0;
+        }
+
+        .side-menu-link:nth-child(1)::before {
+            background: linear-gradient(135deg, var(--norte), var(--norte-light));
+        }
+
+        .side-menu-link:nth-child(2)::before {
+            background: linear-gradient(135deg, var(--centro-norte), var(--centro-norte-light));
+        }
+
+        .side-menu-link:nth-child(3)::before {
+            background: linear-gradient(135deg, var(--sudeste), var(--sudeste-light));
+        }
+
+        .side-menu-link:nth-child(4)::before {
+            background: linear-gradient(135deg, var(--sudoeste), var(--sudoeste-light));
+        }
+
+        .side-menu-link:nth-child(5)::before {
+            background: linear-gradient(135deg, #6c757d, #8e99a4);
+        }
+
+        .side-menu-link span {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            animation: float-slow 3s ease-in-out infinite;
+        }
+
+        .side-menu-link:nth-child(2) span {
+            animation-delay: -0.5s;
+        }
+
+        .side-menu-link:nth-child(3) span {
+            animation-delay: -1s;
+        }
+
+        .side-menu-link:nth-child(4) span {
+            animation-delay: -1.5s;
+        }
+
+        .side-menu-link:nth-child(5) span {
+            animation-delay: -2s;
+        }
+
+        .side-menu-tooltip {
+            position: absolute;
+            right: 80px;
+            background: var(--text-dark);
+            color: var(--white);
+            padding: 10px 16px;
+            border-radius: var(--radius-small);
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(10px);
+            transition: all 0.3s ease;
+            z-index: -1;
+        }
+
+        .side-menu-link:hover .side-menu-tooltip {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Responsivo - Menu Mobile */
+        @media (max-width: 768px) {
+            .side-menu {
+                right: 10px;
+                gap: 12px;
+            }
+
+            .side-menu-link {
+                width: 50px;
+                height: 50px;
+                font-size: 22px;
+            }
+
+            .side-menu-link:hover {
+                transform: scale(1.1) translateX(-8px);
+            }
+
+            .side-menu-tooltip {
+                font-size: 0.75rem;
+                right: 65px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .side-menu {
+                position: static;
+                flex-direction: row;
+                transform: none;
+                gap: 8px;
+                padding: 16px;
+                margin: 20px auto;
+                width: fit-content;
+                border-radius: var(--radius-large);
+                background: rgba(255,255,255,0.7);
+                box-shadow: var(--shadow-card);
+            }
+
+            .side-menu-link {
+                width: 48px;
+                height: 48px;
+                font-size: 20px;
+            }
+
+            .side-menu-link:hover {
+                transform: scale(1.05) translateY(-4px);
+            }
+
+            .side-menu-tooltip {
+                display: none;
+            }
+        }
+
+        /* ============================================
+           TEXTAREA DESIGNER
+           ============================================ */
+        .textarea-wrapper {
+            position: relative;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .textarea-wrapper textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: var(--radius-medium);
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+            resize: vertical;
+            min-height: 120px;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            outline: none;
+            position: relative;
+            z-index: 1;
+        }
+
+        .textarea-wrapper textarea::placeholder {
+            color: rgba(93, 109, 126, 0.5);
+            font-weight: 500;
+        }
+
+        /* Focus states with color variations */
+        .section-norte .textarea-wrapper textarea:focus {
+            border-color: var(--norte);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.15), inset 0 0 0 3px rgba(255, 107, 107, 0.05);
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(255, 107, 107, 0.03));
+        }
+
+        .section-centro-norte .textarea-wrapper textarea:focus {
+            border-color: var(--centro-norte);
+            box-shadow: 0 6px 20px rgba(78, 205, 196, 0.15), inset 0 0 0 3px rgba(78, 205, 196, 0.05);
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(78, 205, 196, 0.03));
+        }
+
+        .section-sudeste .textarea-wrapper textarea:focus {
+            border-color: var(--sudeste);
+            box-shadow: 0 6px 20px rgba(255, 217, 61, 0.15), inset 0 0 0 3px rgba(255, 217, 61, 0.05);
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(255, 217, 61, 0.03));
+        }
+
+        .section-sudoeste .textarea-wrapper textarea:focus {
+            border-color: var(--sudoeste);
+            box-shadow: 0 6px 20px rgba(107, 203, 119, 0.15), inset 0 0 0 3px rgba(107, 203, 119, 0.05);
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(107, 203, 119, 0.03));
+        }
+
+        /* Textarea hover effect */
+        .textarea-wrapper textarea:hover:not(:focus) {
+            border-color: rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        /* Character counter */
+        .textarea-counter {
+            position: absolute;
+            bottom: 8px;
+            right: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-medium);
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .textarea-wrapper textarea:focus ~ .textarea-counter {
+            opacity: 1;
+        }
+
+        /* Textarea icon */
+        .textarea-icon {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 1.2rem;
+            opacity: 0.6;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .textarea-wrapper textarea:focus ~ .textarea-icon {
+            opacity: 1;
+        }
+
+        /* Textarea label */
+        .textarea-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        /* Custom scrollbar */
+        .textarea-wrapper textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .textarea-wrapper textarea::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 10px;
+        }
+
+        .section-norte .textarea-wrapper textarea::-webkit-scrollbar-thumb {
+            background: rgba(255, 107, 107, 0.4);
+            border-radius: 10px;
+        }
+
+        .section-norte .textarea-wrapper textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 107, 107, 0.7);
+        }
+
+        .section-centro-norte .textarea-wrapper textarea::-webkit-scrollbar-thumb {
+            background: rgba(78, 205, 196, 0.4);
+            border-radius: 10px;
+        }
+
+        .section-centro-norte .textarea-wrapper textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(78, 205, 196, 0.7);
+        }
+
+        .section-sudeste .textarea-wrapper textarea::-webkit-scrollbar-thumb {
+            background: rgba(255, 217, 61, 0.4);
+            border-radius: 10px;
+        }
+
+        .section-sudeste .textarea-wrapper textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 217, 61, 0.7);
+        }
+
+        .section-sudoeste .textarea-wrapper textarea::-webkit-scrollbar-thumb {
+            background: rgba(107, 203, 119, 0.4);
+            border-radius: 10px;
+        }
+
+        .section-sudoeste .textarea-wrapper textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 203, 119, 0.7);
+        }
+
+        /* Responsive textarea */
+        @media (max-width: 768px) {
+            .textarea-wrapper textarea {
+                min-height: 100px;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .textarea-wrapper textarea {
+                min-height: 90px;
+                padding: 12px 14px;
+                font-size: 0.85rem;
+            }
+
+            .textarea-counter {
+                font-size: 0.75rem;
+                bottom: 6px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Tooltip -->
+    <div class="map-tooltip" id="mapTooltip"></div>
+
+    <!-- Side Menu - Links das Atividades -->
+    <nav class="side-menu" aria-label="Atividades">
+        <a href="#secao-norte" class="side-menu-link" title="Atividade 1 - Norte Piauiense">
+            <span>🔍</span>
+            <div class="side-menu-tooltip">Atividade 1</div>
+        </a>
+        <a href="#secao-centro-norte" class="side-menu-link" title="Atividade 2 - Centro-Norte Piauiense">
+            <span>💡</span>
+            <div class="side-menu-tooltip">Atividade 2</div>
+        </a>
+        <a href="#secao-sudeste" class="side-menu-link" title="Atividade 3 - Sudeste Piauiense">
+            <span>💻</span>
+            <div class="side-menu-tooltip">Atividade 3</div>
+        </a>
+        <a href="#secao-sudoeste" class="side-menu-link" title="Atividade 4 - Sudoeste Piauiense">
+            <span>👥</span>
+            <div class="side-menu-tooltip">Atividade 4</div>
+        </a>
+        <a href="https://forms.gle/La6h57FfsGC5fn5o7" target="_blank" rel="noopener noreferrer" class="side-menu-link" title="Formulário de Feedback">
+            <span>📝</span>
+            <div class="side-menu-tooltip">Feedback</div>
+        </a>
+    </nav>
+
+    <!-- ==========================================
+         HERO / MAP SECTION
+         ========================================== -->
+    <section class="hero" id="mapa">
+        <!-- Decorations -->
+        <div class="hero-decorations">
+            <!-- Clouds -->
+            <svg class="deco-cloud" width="120" height="50" viewBox="0 0 120 50">
+                <ellipse cx="50" cy="30" rx="40" ry="18" fill="#4ECDC4" opacity="0.5"/>
+                <ellipse cx="75" cy="25" rx="30" ry="15" fill="#4ECDC4" opacity="0.4"/>
+                <ellipse cx="35" cy="28" rx="25" ry="12" fill="#4ECDC4" opacity="0.3"/>
+            </svg>
+            <svg class="deco-cloud" width="100" height="45" viewBox="0 0 100 45">
+                <ellipse cx="45" cy="25" rx="35" ry="16" fill="#FF6B6B" opacity="0.4"/>
+                <ellipse cx="65" cy="22" rx="25" ry="13" fill="#FF6B6B" opacity="0.3"/>
+            </svg>
+            <svg class="deco-cloud" width="90" height="40" viewBox="0 0 90 40">
+                <ellipse cx="40" cy="22" rx="30" ry="14" fill="#FFD93D" opacity="0.4"/>
+                <ellipse cx="60" cy="20" rx="22" ry="11" fill="#FFD93D" opacity="0.3"/>
+            </svg>
+            <svg class="deco-cloud" width="110" height="45" viewBox="0 0 110 45">
+                <ellipse cx="50" cy="25" rx="38" ry="16" fill="#6BCB77" opacity="0.4"/>
+                <ellipse cx="72" cy="22" rx="28" ry="13" fill="#6BCB77" opacity="0.3"/>
+            </svg>
+            <!-- Stars -->
+            <svg class="deco-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9" fill="#FFD93D" opacity="0.6"/></svg>
+            <svg class="deco-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9" fill="#FF6B6B" opacity="0.5"/></svg>
+            <svg class="deco-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9" fill="#4ECDC4" opacity="0.5"/></svg>
+            <svg class="deco-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9" fill="#6BCB77" opacity="0.5"/></svg>
+            <svg class="deco-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9" fill="#FFD93D" opacity="0.4"/></svg>
+        </div>
+
+        <h1 class="hero-title">Descubra o Piauí/Floresta Fóssil de Altos</h1>
+        <p class="hero-subtitle">
+            "Por que a Floresta Fóssil de Altos precisa ser conservada, e o que seus troncos petrificados revelam sobre o passado?"
+        
+        </p>
+
+        <!-- MAP SVG -->
+        <div class="map-container" id="mapContainer">
+            <!-- Floating Panel 
+            <div class="floating-panel" id="floatingPanel">
+                <div class="floating-panel-title">
+                    <span>ℹ️</span>
+                    Mapa Interativo
+                </div>
+                <div class="floating-panel-content">
+                    Explore as <strong>4 mesorregiões</strong> do Piauí clicando em cada região para descobrir características únicas da <strong>Floresta Fóssil de Altos</strong>.
+                </div>
+                <div class="floating-panel-hint">
+                    💡 Passe o mouse sobre as regiões para ver mais detalhes.
+                </div>
+            </div>-->
+            <div class="map-svg-wrapper">
+                <svg viewBox="0 0 500 650" xmlns="http://www.w3.org/2000/svg" aria-label="Mapa interativo do Piaui com quatro mesorregioes">
+                    <!-- Background decoration -->
+                    <defs>
+                        <filter id="shadow" x="-5%" y="-5%" width="115%" height="115%">
+                            <feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.15"/>
+                        </filter>
+                        <linearGradient id="gradNorte" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#FF6B6B"/>
+                            <stop offset="100%" style="stop-color:#ff8e8e"/>
+                        </linearGradient>
+                        <linearGradient id="gradCentroNorte" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#4ECDC4"/>
+                            <stop offset="100%" style="stop-color:#6dd5cd"/>
+                        </linearGradient>
+                        <linearGradient id="gradSudeste" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#FFD93D"/>
+                            <stop offset="100%" style="stop-color:#ffe682"/>
+                        </linearGradient>
+                        <linearGradient id="gradSudoeste" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#6BCB77"/>
+                            <stop offset="100%" style="stop-color:#8fd89a"/>
+                        </linearGradient>
+                    </defs>
+
+                    <!-- Outline glow -->
+                    <g filter="url(#shadow)">
+
+                        <!-- NORTE PIAUIENSE
+                             Top portion of Piaui - includes the coast and northern border -->
+                        <path class="map-region" id="regiao-norte"
+                              data-region="norte"
+                              data-name="Norte Piauiense"
+                              fill="url(#gradNorte)"
+                              d="M 328.8,158.5 L 327.5,154.4 L 331.1,153.0 L 331.9,155.2 L 335.9,157.9 L 339.7,158.1 L 342.4,160.7 L 343.9,160.6 L 351.0,167.9 L 360.3,156.8 L 356.4,156.4 L 355.9,152.6 L 359.5,152.0 L 360.9,148.9 L 363.4,150.0 L 367.8,141.0 L 371.2,141.9 L 373.8,138.8 L 375.1,139.7 L 378.2,138.0 L 382.8,140.3 L 384.9,138.1 L 386.6,139.5 L 388.6,138.7 L 390.9,141.5 L 395.9,140.3 L 394.0,139.9 L 392.3,137.1 L 394.4,131.4 L 389.4,129.7 L 384.4,130.9 L 387.0,124.5 L 383.0,116.4 L 381.4,116.5 L 384.6,112.9 L 384.3,110.0 L 385.7,108.8 L 378.6,106.4 L 379.3,102.5 L 376.5,98.9 L 378.9,97.6 L 379.8,94.1 L 381.2,93.4 L 380.1,92.8 L 379.8,86.0 L 375.4,87.6 L 374.6,84.5 L 372.9,84.8 L 380.1,69.3 L 384.5,65.4 L 385.1,61.2 L 383.5,57.4 L 380.1,56.3 L 379.9,53.9 L 374.7,52.7 L 360.2,52.3 L 350.2,45.5 L 347.2,42.0 L 343.6,43.8 L 342.3,50.3 L 347.1,56.6 L 345.3,60.5 L 338.3,66.9 L 337.5,72.0 L 336.1,71.6 L 332.1,76.5 L 324.4,77.8 L 324.0,78.8 L 326.3,79.6 L 326.1,81.1 L 324.3,81.0 L 324.5,83.1 L 322.9,83.8 L 322.2,86.4 L 319.6,86.9 L 319.0,89.1 L 312.6,90.7 L 310.1,89.3 L 306.2,90.3 L 305.1,92.2 L 303.6,90.7 L 301.1,92.8 L 299.3,92.3 L 299.4,90.2 L 298.2,90.5 L 293.9,98.6 L 290.7,99.9 L 290.2,102.3 L 286.3,105.9 L 286.5,114.1 L 282.5,122.7 L 278.9,125.4 L 278.0,128.0 L 276.1,128.5 L 272.8,135.7 L 270.6,136.7 L 271.5,139.1 L 268.5,139.4 L 264.7,143.8 L 266.3,153.5 L 292.8,158.1 L 292.8,155.3 L 295.2,153.6 L 300.2,158.6 L 302.2,159.0 L 303.9,160.9 L 302.9,161.6 L 312.5,166.6 L 328.8,158.5 Z"/>
+
+                        <!-- CENTRO-NORTE PIAUIENSE
+                             Middle portion - includes Teresina area -->
+                        <path class="map-region" id="regiao-centro-norte"
+                              data-region="centro-norte"
+                              data-name="Centro-Norte Piauiense"
+                              fill="url(#gradCentroNorte)"
+                              d="M 274.8,315.7 L 278.1,320.5 L 286.9,325.9 L 289.9,322.1 L 291.0,322.9 L 293.6,321.5 L 295.0,318.1 L 294.4,317.0 L 299.2,315.9 L 300.0,313.1 L 307.0,313.7 L 308.3,303.5 L 311.6,302.5 L 311.9,307.7 L 320.4,311.7 L 333.1,309.6 L 339.1,311.9 L 340.0,314.4 L 345.7,316.4 L 349.4,321.7 L 356.5,322.0 L 356.5,324.4 L 360.2,324.6 L 364.7,318.0 L 369.0,318.5 L 367.0,305.5 L 372.7,306.1 L 376.5,308.0 L 382.7,312.0 L 381.9,313.6 L 388.6,313.9 L 389.1,312.8 L 393.2,312.3 L 392.3,318.9 L 395.6,319.3 L 416.7,301.6 L 415.7,294.1 L 417.3,288.8 L 412.4,282.4 L 412.9,276.3 L 411.0,270.8 L 408.6,270.0 L 411.0,264.6 L 409.3,260.1 L 408.2,248.0 L 406.4,244.3 L 408.4,243.1 L 409.1,240.3 L 406.6,234.1 L 408.0,229.8 L 406.1,227.0 L 408.3,225.9 L 406.6,223.0 L 408.3,219.5 L 407.3,218.3 L 408.3,216.2 L 406.2,214.4 L 407.6,213.4 L 407.4,210.0 L 403.4,208.3 L 399.9,204.0 L 398.5,204.9 L 396.6,203.9 L 395.5,201.4 L 393.1,201.1 L 393.9,199.2 L 392.7,196.7 L 391.8,197.2 L 389.1,193.6 L 386.9,193.4 L 384.9,188.7 L 385.5,185.4 L 387.8,182.3 L 384.9,180.9 L 390.2,174.8 L 386.3,171.4 L 386.9,168.6 L 385.4,167.9 L 386.9,167.8 L 389.0,164.2 L 391.1,154.9 L 393.9,151.4 L 392.8,144.7 L 395.4,141.0 L 390.9,141.5 L 388.6,138.7 L 386.6,139.5 L 384.9,138.1 L 382.1,140.2 L 381.3,138.7 L 378.2,138.0 L 375.1,139.7 L 373.8,138.8 L 371.2,141.9 L 367.8,141.0 L 363.4,150.0 L 360.9,148.9 L 359.5,152.0 L 355.9,152.6 L 356.4,156.4 L 360.3,156.8 L 351.0,167.9 L 343.9,160.6 L 342.4,160.7 L 339.7,158.1 L 335.9,157.9 L 331.9,155.2 L 331.1,153.0 L 327.5,154.4 L 328.8,158.5 L 312.5,166.6 L 302.9,161.6 L 303.9,160.9 L 302.2,159.0 L 300.2,158.6 L 295.2,153.6 L 292.8,155.3 L 292.8,158.1 L 283.8,156.0 L 276.8,156.1 L 271.7,153.7 L 266.3,153.0 L 266.8,155.1 L 272.1,157.3 L 272.2,160.3 L 274.1,162.0 L 272.4,165.6 L 272.6,168.8 L 267.1,175.5 L 269.3,179.6 L 267.2,182.2 L 273.9,193.4 L 273.3,195.5 L 277.7,210.8 L 275.6,214.3 L 276.8,217.8 L 275.9,221.7 L 270.2,224.9 L 268.6,228.1 L 266.2,228.8 L 261.5,238.7 L 258.1,239.2 L 257.1,240.6 L 258.6,248.3 L 256.8,250.2 L 257.1,255.1 L 258.6,257.8 L 256.9,260.2 L 258.2,264.5 L 260.4,266.5 L 258.5,270.1 L 260.6,274.2 L 264.3,275.1 L 265.9,279.2 L 273.9,284.2 L 273.5,289.7 L 275.2,289.4 L 275.6,290.5 L 272.3,295.8 L 273.1,300.3 L 271.8,301.3 L 272.7,302.3 L 271.8,306.4 L 269.5,311.3 L 273.7,312.8 L 274.8,315.7 Z"/>
+
+                        <!-- SUDOESTE PIAUIENSE
+                             Bottom-left - cerrado region -->
+                        <path class="map-region" id="regiao-sudoeste"
+                              data-region="sudoeste"
+                              data-name="Sudoeste Piauiense"
+                              fill="url(#gradSudoeste)"
+                              d="M 259.7,502.0 L 259.8,503.5 L 265.7,502.8 L 267.5,510.4 L 270.4,511.0 L 272.6,513.6 L 275.1,512.6 L 276.2,517.4 L 279.7,517.4 L 283.4,513.0 L 283.2,511.3 L 285.9,512.5 L 289.8,512.0 L 292.3,509.0 L 298.9,508.8 L 299.1,506.6 L 302.5,506.1 L 303.7,503.2 L 308.1,500.7 L 308.4,498.7 L 311.1,496.4 L 317.0,494.1 L 326.0,494.0 L 331.3,491.8 L 333.0,492.9 L 334.9,491.7 L 338.7,493.8 L 342.0,491.0 L 344.2,491.3 L 346.8,484.8 L 351.3,481.1 L 351.9,475.7 L 355.1,475.4 L 360.3,471.6 L 364.4,471.9 L 367.4,465.1 L 373.7,458.9 L 371.4,457.5 L 367.7,461.2 L 364.5,459.3 L 360.7,460.3 L 358.5,458.0 L 353.9,457.3 L 353.4,455.8 L 349.6,456.0 L 346.4,452.7 L 343.5,453.8 L 331.3,445.9 L 329.4,446.7 L 327.6,445.0 L 325.3,445.6 L 324.3,444.5 L 322.1,446.2 L 319.9,445.7 L 318.5,450.3 L 312.8,448.9 L 311.5,451.2 L 300.1,450.8 L 282.2,460.7 L 284.1,445.3 L 288.8,439.5 L 288.6,433.4 L 292.6,421.4 L 292.7,414.1 L 287.4,407.5 L 283.7,406.7 L 285.5,390.0 L 280.7,384.7 L 282.7,380.0 L 284.4,380.6 L 286.0,379.3 L 286.0,377.1 L 292.8,376.5 L 292.6,383.2 L 297.8,394.4 L 299.6,394.0 L 300.0,384.7 L 304.2,388.5 L 308.4,386.2 L 319.9,386.1 L 312.3,379.5 L 317.8,379.7 L 321.2,372.2 L 317.9,366.4 L 308.0,365.0 L 311.5,351.6 L 305.1,347.9 L 303.9,333.9 L 289.7,335.9 L 293.8,327.1 L 291.2,324.9 L 291.0,322.9 L 289.9,322.1 L 286.9,325.9 L 278.1,320.5 L 273.7,312.8 L 269.8,311.6 L 263.0,319.5 L 258.2,318.7 L 253.6,321.2 L 246.9,320.0 L 244.4,322.0 L 239.6,322.2 L 234.8,325.3 L 230.5,324.7 L 228.8,322.3 L 226.3,321.5 L 224.9,318.7 L 223.4,319.3 L 219.3,316.5 L 214.3,315.3 L 210.2,316.4 L 208.8,315.5 L 199.3,320.3 L 197.3,318.3 L 192.3,319.5 L 190.6,320.5 L 189.8,323.8 L 186.5,322.7 L 187.6,325.8 L 185.9,324.7 L 182.7,328.2 L 182.5,330.9 L 180.8,331.3 L 180.2,334.0 L 176.4,336.2 L 175.6,341.0 L 173.5,344.3 L 167.9,344.5 L 159.6,349.0 L 158.2,351.5 L 155.6,351.8 L 152.0,357.5 L 148.7,359.0 L 147.0,363.4 L 144.1,363.2 L 143.2,361.2 L 140.6,362.3 L 138.1,361.1 L 134.4,365.4 L 132.3,365.6 L 130.6,368.7 L 122.0,371.6 L 114.6,371.6 L 110.3,375.5 L 109.2,374.1 L 107.3,375.7 L 102.2,376.1 L 92.8,383.9 L 92.0,388.1 L 91.0,388.0 L 91.5,390.4 L 88.0,396.0 L 89.4,397.4 L 87.8,398.2 L 89.1,399.1 L 87.7,399.8 L 86.1,405.0 L 87.2,406.4 L 85.4,407.3 L 86.4,408.5 L 84.8,412.0 L 85.0,416.2 L 79.5,422.7 L 77.6,429.9 L 74.6,433.9 L 74.3,440.0 L 72.6,444.3 L 70.4,445.9 L 72.4,447.4 L 68.9,449.1 L 67.2,454.9 L 65.6,454.8 L 63.7,458.1 L 60.5,459.3 L 58.9,461.9 L 59.9,463.6 L 58.1,465.0 L 56.5,469.5 L 60.0,475.5 L 61.1,484.1 L 63.3,487.4 L 62.6,495.0 L 63.5,498.2 L 68.3,500.4 L 71.2,507.8 L 67.1,513.5 L 68.6,517.3 L 67.3,522.7 L 68.5,528.0 L 65.4,534.8 L 67.1,539.7 L 64.5,547.8 L 64.7,551.1 L 59.9,557.3 L 59.9,561.6 L 55.3,561.1 L 54.2,562.9 L 58.2,568.6 L 62.3,569.4 L 64.0,567.3 L 62.0,565.4 L 63.3,562.0 L 65.1,561.0 L 70.5,562.3 L 74.6,559.6 L 75.1,554.6 L 84.3,551.4 L 86.1,553.4 L 86.5,558.3 L 89.0,560.1 L 89.8,563.8 L 95.6,568.6 L 96.0,573.3 L 98.0,574.5 L 94.4,578.9 L 94.4,582.4 L 95.5,587.4 L 98.7,588.8 L 100.6,594.4 L 106.8,597.5 L 108.2,600.6 L 120.3,601.9 L 130.1,608.0 L 135.1,604.9 L 136.2,606.0 L 138.7,603.7 L 140.0,599.7 L 142.1,599.4 L 143.0,597.6 L 148.4,596.3 L 148.5,591.0 L 151.8,590.2 L 154.1,587.3 L 160.0,588.7 L 163.0,585.8 L 167.0,585.7 L 171.3,581.7 L 176.3,587.0 L 179.8,586.3 L 184.3,588.3 L 189.6,583.9 L 192.8,576.6 L 193.0,572.0 L 196.5,573.7 L 200.4,573.3 L 200.5,570.3 L 205.8,564.8 L 205.8,561.0 L 209.9,556.2 L 210.8,549.3 L 215.8,549.1 L 218.0,544.4 L 215.1,541.4 L 216.0,538.9 L 214.7,537.7 L 218.6,532.6 L 209.5,527.3 L 208.6,522.7 L 205.5,518.6 L 204.9,512.7 L 209.9,505.6 L 216.3,503.4 L 223.7,496.7 L 231.3,492.6 L 234.2,493.4 L 238.8,499.8 L 241.0,500.3 L 244.5,503.9 L 249.0,502.2 L 251.1,503.4 L 253.2,500.5 L 259.7,502.0 Z"/>
+
+                        <!-- SUDESTE PIAUIENSE
+                             Bottom-right - Serra da Capivara region -->
+                        <path class="map-region" id="regiao-sudeste"
+                              data-region="sudeste"
+                              data-name="Sudeste Piauiense"
+                              fill="url(#gradSudeste)"
+                              d="M 418.5,422.2 L 422.5,420.8 L 427.5,415.0 L 430.6,414.9 L 429.7,411.9 L 433.8,402.4 L 433.5,393.4 L 424.8,388.8 L 428.4,381.2 L 422.9,372.5 L 422.1,368.9 L 433.5,363.3 L 433.9,359.1 L 436.0,356.8 L 437.5,344.3 L 441.8,338.5 L 441.1,337.3 L 443.3,336.5 L 441.7,335.7 L 441.6,327.0 L 445.8,322.5 L 441.5,323.2 L 438.4,317.6 L 429.7,316.5 L 426.5,313.9 L 421.7,313.4 L 420.7,312.3 L 421.4,309.7 L 416.7,301.6 L 395.6,319.3 L 392.3,318.9 L 393.2,312.3 L 389.1,312.8 L 388.6,313.9 L 381.9,313.6 L 382.7,312.0 L 376.5,308.0 L 372.7,306.1 L 367.0,305.5 L 369.0,318.5 L 364.7,318.0 L 360.2,324.6 L 356.5,324.4 L 356.5,322.0 L 349.4,321.7 L 345.7,316.4 L 340.0,314.4 L 339.1,311.9 L 333.1,309.6 L 320.4,311.7 L 311.9,307.7 L 311.6,302.5 L 308.3,303.5 L 307.0,313.7 L 300.7,312.8 L 299.2,315.9 L 294.4,317.0 L 295.0,318.1 L 293.6,321.5 L 290.9,323.4 L 293.8,327.1 L 289.7,335.9 L 303.9,333.9 L 305.1,347.9 L 311.5,351.6 L 308.0,365.0 L 317.9,366.4 L 321.2,372.2 L 317.8,379.7 L 312.3,379.5 L 319.9,386.1 L 308.4,386.2 L 304.2,388.5 L 300.0,384.7 L 299.6,394.0 L 297.8,394.4 L 292.6,383.2 L 292.8,376.5 L 286.0,377.1 L 286.0,379.3 L 284.4,380.6 L 282.7,380.0 L 280.7,384.7 L 285.5,390.0 L 283.7,406.7 L 287.4,407.5 L 292.7,414.1 L 292.6,421.4 L 288.6,433.4 L 288.8,439.5 L 284.1,445.3 L 282.2,460.7 L 300.1,450.8 L 311.5,451.2 L 312.8,448.9 L 318.5,450.3 L 319.9,445.7 L 322.1,446.2 L 324.3,444.5 L 325.3,445.6 L 327.6,445.0 L 329.3,446.7 L 330.4,445.8 L 333.4,446.8 L 335.2,449.3 L 339.3,450.5 L 343.5,453.8 L 346.4,452.7 L 349.6,456.0 L 353.4,455.8 L 353.9,457.3 L 358.5,458.0 L 360.6,460.3 L 364.5,459.3 L 367.7,461.2 L 370.7,457.6 L 373.7,458.9 L 375.8,454.3 L 378.9,454.4 L 382.3,451.1 L 387.4,449.9 L 387.5,447.0 L 390.5,445.7 L 391.9,442.3 L 393.4,442.8 L 395.6,441.2 L 396.7,438.0 L 398.7,438.6 L 399.2,435.6 L 402.2,433.1 L 403.7,432.9 L 407.4,436.2 L 409.0,434.4 L 409.6,430.1 L 413.5,431.7 L 414.7,427.6 L 417.4,426.2 L 417.2,423.0 L 418.5,422.2 Z"/>
+
+                    </g>
+
+                    <!-- Region Labels -->
+                    <text class="map-label" x="340" y="100" font-size="14">Norte</text>
+                    <text class="map-label" x="340" y="118" font-size="11">Piauiense</text>
+
+                    <text class="map-label" x="335" y="222" font-size="14">Centro-Norte</text>
+                    <text class="map-label" x="335" y="240" font-size="11">Piauiense</text>
+
+                    <text class="map-label" x="155" y="455" font-size="14">Sudoeste</text>
+                    <text class="map-label" x="155" y="473" font-size="11">Piauiense</text>
+
+                    <text class="map-label" x="375" y="380" font-size="14">Sudeste</text>
+                    <text class="map-label" x="375" y="398" font-size="11">Piauiense</text>
+
+                                   <!-- Small decorative compass -->
+                    <g transform="translate(15, 35)" opacity="0.5">
+                        <circle cx="20" cy="20" r="18" fill="none" stroke="#2C3E50" stroke-width="1.5"/>
+                        <text x="20" y="10" text-anchor="middle" font-size="8" fill="#2C3E50" font-weight="700">N</text>
+                        <text x="20" y="36" text-anchor="middle" font-size="7" fill="#2C3E50">S</text>
+                        <text x="6" y="23" text-anchor="middle" font-size="7" fill="#2C3E50">O</text>
+                        <text x="34" y="23" text-anchor="middle" font-size="7" fill="#2C3E50">L</text>
+                        <line x1="20" y1="13" x2="20" y2="27" stroke="#2C3E50" stroke-width="1"/>
+                        <line x1="13" y1="20" x2="27" y2="20" stroke="#2C3E50" stroke-width="1"/>
+                        <polygon points="20,13 18,18 22,18" fill="#e84545"/>
+                    </g>
+
+                </svg>
+            </div>
+        </div>
+
+        <p class="hero-hint">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
+            Clique em uma regiao do mapa para explorar!
+        </p>
+    </section>
+
+    <!-- ==========================================
+         NORTE PIAUIENSE
+         ========================================== -->
+    <section class="section section-norte" id="secao-norte">
+        <div class="section-card animate-on-scroll">
+            <div class="section-header">
+                <div class="section-icon">🔍</div>
+                <h2 class="section-title">Observação e problematização</h2>
+            </div>
+
+            <div class="curiosidade-box">
+                <span class="emoji">💡</span>
+                <span>Orientações sobre a atividade</span>
+                <br>
+                <span> 1. Veja o vídeo apresentado sobre a Floresta Fóssil de Altos;
+                    <br>2. Observe as imagens dos troncos fossilizados, percebendo cada um deles e suas características como formato, detallhes presentes em sua estrutura.
+                    <br>3. Leia atentamente o texto de apoio Piauí antes do tempo   
+                    <br>4. Deixe suas impressões (perguntas) no diário de bordo e coloque nas anotações suas perguntas sobre o tema.
+                </span>
+            </div>
+
+            <div class="content-grid">
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">📍</span> vídeos da atividade
+                    </h3>
+                    <div class="video-links">
+                        <button type="button" class="video-link" data-video="_y6PrN70yo4">Vídeo: Problematização histórica</button>
+                    </div>
+                    <p class="video-help">Clique em um vídeo para abrir o player na mesma página, centralizado.</p>
+                </div>
+
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🌍</span> Texto de Apoio
+                    </h3>
+                      <button type="button" class="video-link" data-site="https://cidadeverde.com/cienciaviva/133597/piaui-antes-do-tempo-um-tesouro-paleontologico-brasileiro">Ciência Viva: O Piauí antes do tempo</button>
+                </div>
+
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🎭</span> Imagens de troncos fossilizados da Floresta Fóssil.
+
+                    </h3>
+                    <div class="image-gallery">
+                        <button type="button" class="image-thumb" data-large="img/img1.jpeg">
+                            <img src="img/img1.jpeg" alt="Imagem da questão 1" />
+                        </button>
+                        <button type="button" class="image-thumb" data-large="img/img2.jpeg">
+                            <img src="img/img2.jpeg" alt="Imagem da questão 2" />
+                        </button>
+                        <button type="button" class="image-thumb" data-large="img/img3.jpeg">
+                            <img src="img/img3.jpeg" alt="Imagem da questão 3" />
+                        </button>
+                        <button type="button" class="image-thumb" data-large="img/img4.jpeg">
+                            <img src="img/img4.jpeg" alt="Imagem da questão 4" />
+                        </button>
+                        <button type="button" class="image-thumb" data-large="img/img5.jpeg">
+                            <img src="img/img5.jpeg" alt="Imagem da questão 5" />
+                        </button>
+                        <button type="button" class="image-thumb" data-large="img/img6.jpeg">
+                            <img src="img/img6.jpeg" alt="Imagem da questão 6" />
+                        </button>
+                    </div>
+                    <p>Toque em uma imagem para ver maior.</p>
+                </div>
+
+                    <div class="content-block">
+                        <h3 class="content-block-title">
+                              <span class="emoji"></span> Impressões sobre o assunto:
+                        </h3>
+                        <span>
+                            <button type="button" class="video-link" data-site="https://docs.google.com/forms/d/e/1FAIpQLScK6jkcwCQ-06eWgCZBoL7JvPJA_bOybiYPmZr6nlMbz_t7UA/viewform">Diário de bordo</button>
+                        </span>
+
+                        <form class="note-form" data-region="centro-norte">
+                            <label class="textarea-label">Suas anotações pessoais:  indique uma pergunta sobre o tema</label>
+                            <div class="textarea-wrapper">
+                                <textarea placeholder="Escreva suas anotações aqui..." cols="40" rows="10"></textarea>
+                                <span class="textarea-icon">✏️</span>
+                                <span class="textarea-counter"><span class="char-count">0</span>/500</span>
+                            </div>
+                            <button type="button" class="save-note-btn" data-region="centro-norte">Salvar esta anotação</button>
+                            <div class="save-note-status" aria-live="polite"></div>
+                        </form> 
+                    </div>
+            </div>
+
+            <!-- Quiz Norte -->
+            <div class="quiz-container" id="quiz-norte">
+                <h3 class="quiz-title">🧠 Teste seus conhecimentos!</h3>
+                <div class="quiz-question" id="quiz-norte-question"></div>
+                <div class="quiz-options" id="quiz-norte-options"></div>
+                <div class="quiz-feedback" id="quiz-norte-feedback"></div>
+                <button class="quiz-next-btn" id="quiz-norte-next" onclick="nextQuestion('norte')">Proxima pergunta →</button>
+                <div class="quiz-score" id="quiz-norte-score" style="display:none;"></div>
+            </div>
+
+            <button class="back-to-map" onclick="scrollToMap()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5m0 0l7 7m-7-7l7-7"/></svg>
+                Voltar ao Mapa
+            </button>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         CENTRO-NORTE PIAUIENSE
+         ========================================== -->
+    <section class="section section-centro-norte" id="secao-centro-norte">
+        <div class="section-card animate-on-scroll">
+            <div class="section-header">
+                <div class="section-icon">💡</div>
+                <h2 class="section-title">Formulação de hipóteses</h2>
+            </div>
+
+            <div class="curiosidade-box">
+                <span class="emoji">💡</span>
+                <span>Orientações sobre a atividade</span>
+                <br>
+                <span>  1. Visite o Museu Virtual de Paleontologia da UFGRS, veja sobre as características  do período Permiano
+                    <br>2. Veja o vídeo Piauí Paleontológico, e observe os pontos destacados da obra.      
+                    <br>3. Acesse o Forms e  responda a pergunta nas anotações.
+                </span>
+            </div>
+
+            <div class="content-grid">
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">📍</span>Lista 2
+                    </h3>
+                    <ul>
+                        <li><button type="button" class="video-link" data-site="https://www.tourvirtual360.com.br/museupaleontologia/">Museu de Paleontologia da UFRGS</button></li>
+                        <li><button type="button" class="video-link" data-video="n35MF_ud1d0">Vídeo: Observação ambiental</button></li>
+                    </ul>
+                </div>
+                <!--
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🌍</span> texto 2
+                    </h3>
+                    <p>texto de apoio</p>
+                </div>
+
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🎭</span> imagem
+                    </h3>
+                    <p>imagem </p>
+                </div> -->
+
+                    <div class="content-block">
+                        <h3 class="content-block-title">
+                            <span class="emoji"></span> Quais condições ambientais foram responsáveis pela fossilização destes troncos?
+                        </h3>
+                        <span>
+                            <button type="button" class="video-link" data-site="https://docs.google.com/forms/d/e/1FAIpQLScK6jkcwCQ-06eWgCZBoL7JvPJA_bOybiYPmZr6nlMbz_t7UA/viewform">Diário de bordo</button>
+                        </span>
+                        
+                         
+                        <form class="note-form" data-region="centro-norte">
+                            <label class="textarea-label">Suas anotações pessoais:</label>
+                            <div class="textarea-wrapper">
+                                <textarea placeholder="Escreva suas anotações aqui..." cols="40" rows="10"></textarea>
+                                <span class="textarea-icon">✏️</span>
+                                <span class="textarea-counter"><span class="char-count">0</span>/500</span>
+                            </div>
+                            <button type="button" class="save-note-btn" data-region="centro-norte">Salvar esta anotação</button>
+                            <div class="save-note-status" aria-live="polite"></div>
+                        </form> 
+                    </div>
+            </div>
+
+            <!-- Quiz Centro-Norte -->
+            <div class="quiz-container" id="quiz-centro-norte">
+                <h3 class="quiz-title">🧠 Teste seus conhecimentos!</h3>
+                <div class="quiz-question" id="quiz-centro-norte-question"></div>
+                <div class="quiz-options" id="quiz-centro-norte-options"></div>
+                <div class="quiz-feedback" id="quiz-centro-norte-feedback"></div>
+                <button class="quiz-next-btn" id="quiz-centro-norte-next" onclick="nextQuestion('centro-norte')">Proxima pergunta →</button>
+                <div class="quiz-score" id="quiz-centro-norte-score" style="display:none;"></div> 
+            </div>
+            
+            <button class="back-to-map" onclick="scrollToMap()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5m0 0l7 7m-7-7l7-7"/></svg>
+                Voltar ao Mapa
+            </button>
+        </div>
+    </section> 
+
+    <!-- ==========================================
+         SUDESTE PIAUIENSE
+         ========================================== -->
+    <section class="section section-sudeste" id="secao-sudeste">
+        <div class="section-card animate-on-scroll">
+            <div class="section-header">
+                <div class="section-icon">💻</div>
+                <h2 class="section-title">Experimentação</h2>
+            </div>
+
+            <div class="curiosidade-box">
+                <span class="emoji">💡</span>
+                <span>Orientações sobre a atividade </span>
+                <span>
+                    1 - Explore as Simulações Virtuais, no tópico fatos sobre a fossilização. <br>
+                    2 - Acesse, em seguida, um simulador virtual entitulado Como a Terra era? <br>
+                    3 - Realize uma atividade sobre as etapas do processo de fossilização 
+                </span>
+            </div>
+
+            <div class="content-grid">
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">📍</span> Simulações Virtuais
+                    </h3>
+                    <ul>
+                        <li><button type="button" class="video-link" data-site="https://www.bbc.co.uk/bitesize/articles/zt3ntrd#z38vjfr">Fatos sobre a fossilização</button></li>
+                        <li><button type="button" class="video-link" data-site="https://dinosaurpictures.org/ancient-earth#240">Como era a Terra?</button></li>
+                    </ul>
+                </div>
+
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🌍</span> Atividade sobre o processo de fossilização
+                    </h3>
+                    <ul>
+                        <li><button type="button" class="video-link" data-site="https://www.bbc.co.uk/bitesize/articles/zt3ntrd#zdm996f">Atividade </button></li>
+                       <!-- <li><button type="button" class="video-link" data-site="https://cidadeverde.com/cienciaviva/133597/piaui-antes-do-tempo-um-tesouro-paleontologico-brasileiro ">Texto de Apoio</button></li>-->
+                    </ul>
+                </div>
+                
+                
+                <div class="content-block">
+                    
+                </div> 
+
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🦎</span> Como era a Terra há 280 milhões de anos atrás?
+
+                    </h3>
+                    <form class="note-form" data-region="sudeste">
+                        <label class="textarea-label">Suas anotações pessoais:</label>
+                        <div class="textarea-wrapper">
+                            <textarea placeholder="Escreva suas anotações aqui..." cols="40" rows="10"></textarea>
+                            <span class="textarea-icon">✏️</span>
+                            <span class="textarea-counter"><span class="char-count">0</span>/500</span>
+                        </div>
+                        <button type="button" class="save-note-btn" data-region="sudeste">Salvar esta anotação</button>
+                        <div class="save-note-status" aria-live="polite"></div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Quiz Sudeste -->
+            <div class="quiz-container" id="quiz-sudeste">
+                <h3 class="quiz-title">🧠 Teste seus conhecimentos!</h3>
+                <div class="quiz-question" id="quiz-sudeste-question"></div>
+                <div class="quiz-options" id="quiz-sudeste-options"></div>
+                <div class="quiz-feedback" id="quiz-sudeste-feedback"></div>
+                <button class="quiz-next-btn" id="quiz-sudeste-next" onclick="nextQuestion('sudeste')">Proxima pergunta →</button>
+                <div class="quiz-score" id="quiz-sudeste-score" style="display:none;"></div>
+            </div>
+
+            <button class="back-to-map" onclick="scrollToMap()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5m0 0l7 7m-7-7l7-7"/></svg>
+                Voltar ao Mapa
+            </button>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SUDOESTE PIAUIENSE
+         ========================================== -->
+    <section class="section section-sudoeste" id="secao-sudoeste">
+        <div class="section-card animate-on-scroll">
+            <div class="section-header">
+                <div class="section-icon">👥</div>
+                <h2 class="section-title">Produção/Socialização</h2>
+            </div>
+
+            <div class="curiosidade-box">
+                <span class="emoji">💡</span>
+                <span>Orientações sobre a atividade </span>
+                <span>
+                    1 - Leia o texto de apoio sobre a importância dos fósseis no processo de compreensão da vida na Terra<br>
+                    2 - Acesse o mural digital do Padlet para socializar suas considerações a respeito deste tema.
+                </span>
+            </div>
+
+            <div class="content-grid">
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">📍</span> Socialização das conclusões
+                    </h3>
+                   <ul>
+                        <li><button type="button" class="video-link" data-site="https://padlet.com/joiracosta/descubra-o-piaui_etapa-de-socializacao-89vvnqqicw2yrw2y">Mural Digital para Socialização</button></li>
+                    </ul>
+                </div>
+
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🌍</span> Texto de Apoio        
+                    </h3>
+                    <ul>
+                        <li><button type="button" class="video-link" data-site="https://www3.unicentro.br/museuinterativo/fosseis-pistas-do-passado/">Texto de Apoio</button></li>
+                    </ul>
+                </div>
+                <!--
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🎭</span> Imagem
+                    </h3>
+                    <p>Imagem aqui</p>
+                </div>-->
+
+                <div class="content-block">
+                    <h3 class="content-block-title">
+                        <span class="emoji">🌿</span> Por que a Floresta Fóssil de Altos precisa ser conservada, e o que os seus troncos petrificados revelam sobre o passado?
+                    </h3>
+                    <form class="note-form" data-region="sudoeste">
+                        <label class="textarea-label">Suas anotações pessoais:</label>
+                        <div class="textarea-wrapper">
+                            <textarea placeholder="Escreva suas anotações aqui..." cols="40" rows="10"></textarea>
+                            <span class="textarea-icon">✏️</span>
+                            <span class="textarea-counter"><span class="char-count">0</span>/500</span>
+                        </div>
+                        <button type="button" class="save-note-btn" data-region="sudoeste">Salvar esta anotação</button>
+                        <div class="save-note-status" aria-live="polite"></div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Quiz Sudoeste -->
+            <div class="quiz-container" id="quiz-sudoeste">
+                <h3 class="quiz-title">🧠 Teste seus conhecimentos!</h3>
+                <div class="quiz-question" id="quiz-sudoeste-question"></div>
+                <div class="quiz-options" id="quiz-sudoeste-options"></div>
+                <div class="quiz-feedback" id="quiz-sudoeste-feedback"></div>
+                <button class="quiz-next-btn" id="quiz-sudoeste-next" onclick="nextQuestion('sudoeste')">Proxima pergunta →</button>
+                <div class="quiz-score" id="quiz-sudoeste-score" style="display:none;"></div>
+            </div>
+
+            <button class="back-to-map" onclick="scrollToMap()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5m0 0l7 7m-7-7l7-7"/></svg>
+                Voltar ao Mapa
+            </button>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         FOOTER
+         ========================================== -->
+    <footer class="footer">
+        <div class="footer-title">Descubra o Piaui!</div>
+        <p>Um projeto educativo sobre o estado do Piaui, Brasil</p>
+        <div class="footer-hearts">
+            <span>🌴</span>
+            <span>💚</span>
+            <span>🌵</span>
+        </div>
+    </footer>
+
+    <div class="image-lightbox" id="imageLightbox" aria-hidden="true">
+        <button class="image-lightbox-close" aria-label="Fechar imagem">×</button>
+        <img src="" alt="Imagem ampliada" />
+    </div>
+
+    <div class="video-modal" id="videoModal" aria-hidden="true">
+        <div class="video-modal-content">
+            <button class="video-modal-close" aria-label="Fechar vídeo">×</button>
+            <div class="video-modal-header">
+                <span id="videoPlayerTitle">Vídeo selecionado</span>
+            </div>
+            <div class="video-player-note" id="videoPlayerNote">
+                Se o vídeo não carregar, abra o projeto em um servidor local ou clique no link abaixo.
+            </div>
+            <div class="video-modal-frame">
+                <iframe id="videoPlayerIframe" src="" title="Vídeo da atividade" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; geolocation; microphone; camera" allowfullscreen></iframe>
+            </div>
+            <a id="videoPlayerLink" class="video-player-link" target="_blank" rel="noopener noreferrer">Abrir no YouTube</a>
+        </div>
+    </div>
+
+    <!-- Locked modal: shown when activity is not unlocked -->
+    <div class="locked-modal" id="lockedModal" aria-hidden="true">
+        <div class="locked-modal-content">
+            <button class="locked-modal-close" aria-label="Fechar">×</button>
+            <div class="locked-modal-body">
+                <div class="locked-modal-icon">🔒</div>
+                <div class="locked-modal-text" id="lockedModalMessage">Atividade bloqueada. Complete a atividade anterior para liberar esta seção.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         JAVASCRIPT
+         ========================================== -->
+    <script>
+    (function() {
+        'use strict';
+
+        // ============================================
+        // QUIZ DATA
+        // ============================================
+        const quizData = {
+            norte: [
+                {
+                    question: "Os troncos fossilizados encontrados na Floresta Fóssil de Altos pertencem a qual grupo de plantas?",
+                    options: [
+                        "Briófitas",
+                        "Pteridófitas",
+                        "Gimnospermas",
+                        "Angiospermas"
+                    ],
+                    correct: 2,
+                    explanation: "Gimnospermas"
+                },
+                {
+                    question: "A formação da Floresta Fóssil de Altos ocorreu em qual período geológico?",
+                    options: [
+                        "Devoniano",
+                        "Carbonífero",
+                        "Permiano",
+                        "Triássico"
+                    ],
+                    correct: 2,
+                    explanation: "Permiano"
+                },
+                {
+                    question: "Dentre os fatores abaixo, qual representa uma ameaça à conservação da Floresta Fóssil de Altos?",
+                    options: [
+                        "Excesso de visitantes acompanhados por guias",
+                        "Baixa umidade relativa do ar na região",
+                        "Aumento da vegetação nativa sobre os troncos",
+                        "Erosão natural combinada com ausência de fiscalização"
+                    ],
+                    correct: 3,
+                    explanation: "Erosão natural combinada com ausência de fiscalização"
+                }
+            ],
+            'centro-norte': [
+                {
+                    question: "Durante o Período Permiano, quase todas as massas continentais da Terra estavam unidas, formando uma única e gigantesca extensão de terra. Qual era o nome desse supercontinente?",
+                    options: [
+                        "Pangeia",
+                        "Rodínia",
+                        "Laurásia",
+                        "Gondwana"
+                    ],
+                    correct: 0,
+                    explanation: "Pangeia"
+                },
+                {
+                    question: "Que grande mudança climática global ocorreu no planeta com a formação da Pangea?",
+                    options: [
+                        "Aumento progressivo das temperaturas e da aridez",
+                        "Uma nova glaciação global profunda",
+                        "Aumento drástico nas taxas de oxigênio na atmosfera",
+                        "Inundação total das terras por mares internos"
+                    ],
+                    correct: 0,
+                    explanation: "Aumento progressivo das temperaturas e da aridez"
+                },
+                {
+                    question: "Qual tipo de vegetação se expandiu no sul de Gondwana e deu origem às jazidas de carvão?",
+                    options: [
+                        "Angiospermas Arbóreas",
+                        "Brioflora Gigante",
+                        "Flora Glossopteris",
+                        "Flora de Trapps"
+                    ],
+                    correct: 2,
+                    explanation: "Flora Glossopteris"
+                },
+                {
+                    question: "Quais foram as causas da grande extinção que eliminou 95% da vida no fim do Permiano?",
+                    options: [
+                        "O impacto de um meteoro gigante na região do México",
+                        "Queda de oxigênio que eliminou apenas os insetos e anfíbios",
+                        "A proliferação tóxica da Flora Glossopteris",
+                        "Aquecimento por conta da Pangea e forte vulcanismo na Sibéria"
+                    ],
+                    correct: 3,
+                    explanation: "Aquecimento por conta da Pangea e forte vulcanismo na Sibéria"
+                }
+            ],
+            sudeste: [
+                {
+                    question: "Há 280 milhões de anos, no Período Permiano, quais condições extremas limitaram a extensão da vida vegetal na Pangeia?",
+                    options: [
+                        "Calotas polares e desertos",
+                        "Inundações globais e falta de sol",
+                        "Chuvas ácidas constantes e vulcanismo",
+                        "Glaciação total da linha do equador"
+                    ],
+                    correct: 0,
+                    explanation: "Calotas polares e desertos"
+                },
+                {
+                    question: "De acordo com o mapa interativo, que tipo de rocha é o local mais comum para a preservação e encontro de fósseis?",
+                    options: [
+                        "Rocha magmática",
+                        "Rocha metamórfica",
+                        "Rocha sedimentar",
+                        "Rocha vulcânica"
+                    ],
+                    correct: 2,
+                    explanation: "Rocha sedimentar"
+                },
+                {
+                    question: "Por que os fósseis marinhos são mais comuns do que os fósseis de criaturas terrestres?",
+                    options: [
+                        "Porque os animais marinhos tinham ossos mais fortes",
+                        "Porque os sedimentos na água (lama e areia) cobrem o corpo mais rapidamente",
+                        "Porque a água do mar impede completamente a decomposição",
+                        "Porque não existiam predadores no fundo dos oceanos"
+                    ],
+                    correct: 1,
+                    explanation: "Porque os sedimentos na água (lama e areia) cobrem o corpo mais rapidamente."
+                },
+                {
+                    question: "As plantas não possuem casca nem esqueleto como os animais. Qual parte delas é rígida o suficiente para facilitar a formação de fósseis semelhantes a ossos?",
+                    options: [
+                        "As folhas e as flores pétalas",
+                        "Os gâmetas e os pólens microscópicos",
+                        "O tronco ou galhos rígidos",
+                        "A raiz pivotante subterrânea macia"
+                    ],
+                    correct: 2,
+                    explanation: "O tronco ou galhos rígidos"            
+                  },
+                  {
+                    question: "Além das partes rígidas de árvores, quais outros vestígios vegetais também podem ser encontrados fossilizados?",
+                    options: [
+                        "Folhas, raízes e até mesmo sementes.",
+                        "Frutos carnosos intactos e flores coloridas.",
+                        "Seiva líquida e oxigênio aprisionado.",
+                        "Apenas o pólen que flutuava no ar"
+                    ],
+                    correct: 0,
+                    explanation: "Folhas, raízes e até mesmo sementes."            
+                  }
+            ],
+            sudoeste: [
+                {
+                    question: "Pergunta 1",
+                    options: [
+                        "Resposta A",
+                        "Resposta B",
+                        "Resposta C",
+                        "Resposta D"
+                    ],
+                    correct: 1,
+                    explanation: "O cerrado e chamado de 'berco das aguas' porque muitos rios nascem nesse bioma!"
+                },
+                {
+                    question: "Pergunta 2",
+                    options: [
+                        "Resposta A",
+                        "Resposta B",
+                        "Resposta C",
+                        "Resposta D"
+                    ],
+                    correct: 2,
+                    explanation: "O pequi e uma fruta do cerrado com sabor forte e marcante, usado em muitos pratos tipicos!"
+                },
+                {
+                   question: "Pergunta 3",
+                    options: [
+                        "Resposta A",
+                        "Resposta B",
+                        "Resposta C",
+                        "Resposta D"
+                    ],
+                    correct: 3,
+                    explanation: "Floriano e carinhosamente chamada de 'princesa do Sul' do Piaui!"
+                }
+            ]
+        };
+
+        // Quiz state
+        const activityOrder = ['norte', 'centro-norte', 'sudeste', 'sudoeste'];
+        const activityUnlocked = {};
+
+        function initializeActivityLocks() {
+            activityOrder.forEach((region, index) => {
+                activityUnlocked[region] = index === 0 || localStorage.getItem(`activity-unlocked-${region}`) === 'true';
+            });
+            activityOrder.forEach(updateSectionLockState);
+        }
+
+        function updateSectionLockState(region) {
+            const section = document.getElementById(`secao-${region}`);
+            if (!section) return;
+            const card = section.querySelector('.section-card');
+            if (!card) return;
+            card.classList.toggle('locked', !activityUnlocked[region]);
+        }
+
+        function canAccessActivity(region) {
+            return activityUnlocked[region] === true;
+        }
+
+        function unlockNextActivity(region) {
+            const index = activityOrder.indexOf(region);
+            if (index < 0 || index >= activityOrder.length - 1) return;
+            const nextRegion = activityOrder[index + 1];
+            if (!activityUnlocked[nextRegion]) {
+                activityUnlocked[nextRegion] = true;
+                localStorage.setItem(`activity-unlocked-${nextRegion}`, 'true');
+                updateSectionLockState(nextRegion);
+            }
+        }
+
+        const quizState = {};
+        ['norte', 'centro-norte', 'sudeste', 'sudoeste'].forEach(region => {
+            quizState[region] = {
+                currentQuestion: 0,
+                score: 0,
+                answered: false
+            };
+        });
+
+        // ============================================
+        // INITIALIZE QUIZZES
+        // ============================================
+        function loadQuestion(region) {
+            const state = quizState[region];
+            const data = quizData[region];
+
+            if (state.currentQuestion >= data.length) {
+                showScore(region);
+                return;
+            }
+
+            const q = data[state.currentQuestion];
+            const questionEl = document.getElementById(`quiz-${region}-question`);
+            const optionsEl = document.getElementById(`quiz-${region}-options`);
+            const feedbackEl = document.getElementById(`quiz-${region}-feedback`);
+            const nextBtn = document.getElementById(`quiz-${region}-next`);
+            const scoreEl = document.getElementById(`quiz-${region}-score`);
+
+            questionEl.textContent = `${state.currentQuestion + 1}/${data.length} - ${q.question}`;
+            feedbackEl.className = 'quiz-feedback';
+            feedbackEl.style.display = 'none';
+            nextBtn.classList.remove('show');
+            scoreEl.style.display = 'none';
+            state.answered = false;
+
+            optionsEl.innerHTML = '';
+            const letters = ['A', 'B', 'C', 'D'];
+            q.options.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'quiz-option';
+                btn.innerHTML = `<span class="option-letter">${letters[i]}</span> ${opt}`;
+                btn.addEventListener('click', () => handleAnswer(region, i));
+                optionsEl.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(region, selectedIndex) {
+            const state = quizState[region];
+            if (state.answered) return;
+            state.answered = true;
+
+            const data = quizData[region];
+            const q = data[state.currentQuestion];
+            const optionsEl = document.getElementById(`quiz-${region}-options`);
+            const feedbackEl = document.getElementById(`quiz-${region}-feedback`);
+            const nextBtn = document.getElementById(`quiz-${region}-next`);
+            const options = optionsEl.querySelectorAll('.quiz-option');
+
+            options.forEach((opt, i) => {
+                opt.classList.add('selected');
+                if (i === q.correct) {
+                    opt.classList.add('correct');
+                } else if (i === selectedIndex) {
+                    opt.classList.add('wrong');
+                }
+            });
+
+            const isCorrect = selectedIndex === q.correct;
+            if (isCorrect) {
+                state.score++;
+                feedbackEl.textContent = `✓ Certo! ${q.explanation}`;
+                feedbackEl.className = 'quiz-feedback show correct';
+            } else {
+                feedbackEl.textContent = `✗ Quase! ${q.explanation}`;
+                feedbackEl.className = 'quiz-feedback show wrong';
+            }
+
+            if (state.currentQuestion < data.length - 1) {
+                nextBtn.classList.add('show');
+            } else {
+                setTimeout(() => showScore(region), 1500);
+            }
+        }
+
+        window.nextQuestion = function(region) {
+            quizState[region].currentQuestion++;
+            loadQuestion(region);
+        };
+
+        function showScore(region) {
+            const state = quizState[region];
+            const data = quizData[region];
+            const scoreEl = document.getElementById(`quiz-${region}-score`);
+            const questionEl = document.getElementById(`quiz-${region}-question`);
+            const optionsEl = document.getElementById(`quiz-${region}-options`);
+            const feedbackEl = document.getElementById(`quiz-${region}-feedback`);
+            const nextBtn = document.getElementById(`quiz-${region}-next`);
+
+            questionEl.style.display = 'none';
+            optionsEl.style.display = 'none';
+            feedbackEl.style.display = 'none';
+            nextBtn.classList.remove('show');
+
+            let emoji = '🎉';
+            let msg = '';
+            const pct = state.score / data.length;
+
+            if (pct === 1) {
+                emoji = '🏆';
+                msg = 'Perfeito! Voce acertou tudo!';
+            } else if (pct >= 0.66) {
+                emoji = '🎉';
+                msg = 'Muito bom! Voce sabe bastante!';
+            } else {
+                emoji = '📚';
+                msg = 'Continue estudando! Voce vai melhorar!';
+            }
+
+            scoreEl.innerHTML = `
+                <div style="font-size:3rem; margin-bottom:10px;">${emoji}</div>
+                <div>${msg}</div>
+                <div style="font-size:1rem; margin-top:8px; font-family:'Nunito',sans-serif; font-weight:600; color:var(--text-medium);">
+                    Voce acertou ${state.score} de ${data.length} perguntas!
+                </div>
+                <button class="quiz-next-btn show" style="display:inline-block; margin-top:16px;" onclick="restartQuiz('${region}')">
+                    Tentar novamente 🔄
+                </button>
+            `;
+            scoreEl.style.display = 'block';
+            unlockNextActivity(region);
+        }
+
+        window.restartQuiz = function(region) {
+            quizState[region].currentQuestion = 0;
+            quizState[region].score = 0;
+            quizState[region].answered = false;
+
+            const questionEl = document.getElementById(`quiz-${region}-question`);
+            const optionsEl = document.getElementById(`quiz-${region}-options`);
+
+            questionEl.style.display = '';
+            optionsEl.style.display = '';
+
+            loadQuestion(region);
+        };
+
+        // ============================================
+        // FLOATING PANEL - SHOW/HIDE ON MAP HOVER
+        // ============================================
+        const mapContainer = document.getElementById('mapContainer');
+        const floatingPanel = document.getElementById('floatingPanel');
+
+        if (mapContainer && floatingPanel) {
+            mapContainer.addEventListener('mouseenter', function() {
+                floatingPanel.classList.add('visible');
+            });
+
+            mapContainer.addEventListener('mouseleave', function() {
+                floatingPanel.classList.remove('visible');
+            });
+        }
+
+        // ============================================
+        // MAP INTERACTIONS
+        // ============================================
+        const regions = document.querySelectorAll('.map-region');
+        const tooltip = document.getElementById('mapTooltip');
+
+        regions.forEach(region => {
+            // Click - scroll to section
+            region.addEventListener('click', function() {
+                const regionId = this.getAttribute('data-region');
+                if (!canAccessActivity(regionId)) {
+                    showLockedModal('Complete a atividade anterior para liberar esta seção.');
+                    return;
+                }
+                const target = document.getElementById(`secao-${regionId}`);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+
+            // Hover - tooltip
+            region.addEventListener('mouseenter', function(e) {
+                const name = this.getAttribute('data-name');
+                tooltip.textContent = name;
+                tooltip.classList.add('visible');
+            });
+
+            region.addEventListener('mousemove', function(e) {
+                tooltip.style.left = e.clientX - tooltip.offsetWidth / 2 + 'px';
+                tooltip.style.top = e.clientY - 45 + 'px';
+            });
+
+            region.addEventListener('mouseleave', function() {
+                tooltip.classList.remove('visible');
+            });
+        });
+
+        // ============================================
+        // SIDE MENU - PREVENT NAV FOR LOCKED ACTIVITIES
+        // ============================================
+        document.querySelectorAll('.side-menu a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                const href = this.getAttribute('href') || '';
+                // only intercept internal activity anchors like #secao-norte
+                if (href.startsWith('#secao-')) {
+                    const region = href.replace('#secao-', '');
+                    if (!canAccessActivity(region)) {
+                        e.preventDefault();
+                        showLockedModal('Complete a atividade anterior para liberar esta seção.');
+                        return;
+                    }
+                }
+            });
+        });
+
+        // ============================================
+        // SCROLL TO MAP
+        // ============================================
+        window.scrollToMap = function() {
+            document.getElementById('mapa').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        // ============================================
+        // INTERSECTION OBSERVER - ANIMATE ON SCROLL
+        // ============================================
+        const observerOptions = {
+            threshold: 0.15,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // Stagger children
+                    const blocks = entry.target.querySelectorAll('.content-block');
+                    blocks.forEach((block, i) => {
+                        block.style.opacity = '0';
+                        block.style.transform = 'translateY(20px)';
+                        block.style.transition = `opacity 0.5s ease ${i * 0.15}s, transform 0.5s ease ${i * 0.15}s`;
+                        setTimeout(() => {
+                            block.style.opacity = '1';
+                            block.style.transform = 'translateY(0)';
+                        }, 50);
+                    });
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.animate-on-scroll').forEach(el => {
+            observer.observe(el);
+        });
+
+        // ============================================
+        // TEXTAREA CHARACTER COUNTER
+        // ============================================
+        const textareas = document.querySelectorAll('.textarea-wrapper textarea');
+        const MAX_NOTE_CHARS = 500;
+
+        function updateCounterFor(textarea) {
+            const wrapper = textarea.parentElement;
+            const counter = wrapper.querySelector('.char-count');
+            if (!counter) return;
+            let currentLength = textarea.value.length;
+
+            if (currentLength > MAX_NOTE_CHARS) {
+                textarea.value = textarea.value.substring(0, MAX_NOTE_CHARS);
+                currentLength = MAX_NOTE_CHARS;
+            }
+
+            counter.textContent = currentLength;
+
+            if (currentLength > MAX_NOTE_CHARS * 0.8) {
+                counter.style.color = 'rgba(255, 107, 107, 0.8)';
+                counter.style.fontWeight = '700';
+            } else if (currentLength > MAX_NOTE_CHARS * 0.5) {
+                counter.style.color = 'rgba(255, 217, 61, 0.8)';
+                counter.style.fontWeight = '600';
+            } else {
+                counter.style.color = 'rgba(93, 109, 126, 0.7)';
+                counter.style.fontWeight = '600';
+            }
+        }
+
+        textareas.forEach(textarea => {
+            // Initial count
+            updateCounterFor(textarea);
+
+            // Update on input
+            textarea.addEventListener('input', function() {
+                updateCounterFor(this);
+            });
+
+            // Add animation on focus
+            textarea.addEventListener('focus', function() {
+                this.parentElement.style.transition = 'all 0.3s ease';
+            });
+        });
+
+        // ============================================
+        // INIT
+        // ============================================
+        initializeActivityLocks();
+        ['norte', 'centro-norte', 'sudeste', 'sudoeste'].forEach(region => {
+            loadQuestion(region);
+        });
+        loadSavedNotes();
+
+        const lightbox = document.getElementById('imageLightbox');
+        const lightboxImg = lightbox ? lightbox.querySelector('img') : null;
+        const lightboxClose = lightbox ? lightbox.querySelector('.image-lightbox-close') : null;
+        const videoModal = document.getElementById('videoModal');
+        const videoModalClose = document.querySelector('.video-modal-close');
+        const videoPlayerTitle = document.getElementById('videoPlayerTitle');
+        const videoPlayerNote = document.getElementById('videoPlayerNote');
+        const videoPlayerLink = document.getElementById('videoPlayerLink');
+        const videoPlayerIframe = document.getElementById('videoPlayerIframe');
+        const isFileProtocol = window.location.protocol === 'file:';
+
+        function loadSavedNotes() {
+            document.querySelectorAll('.note-form').forEach(form => {
+                const region = form.dataset.region;
+                const textarea = form.querySelector('textarea');
+                const savedValue = localStorage.getItem(`note-${region}`);
+                if (savedValue !== null && textarea) {
+                    textarea.value = savedValue;
+                    updateCounterFor(textarea);
+                }
+            });
+        }
+
+        // Escape HTML for safe fallback rendering
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Load jsPDF dynamically if needed and call callback when ready
+        function ensureJsPdf(callback) {
+            if (window.jspdf && window.jspdf.jsPDF) return callback();
+            const existing = document.querySelector('script[data-jspdf]');
+            if (existing) {
+                existing.addEventListener('load', () => callback());
+                existing.addEventListener('error', () => callback(null));
+                return;
+            }
+            const s = document.createElement('script');
+            s.dataset.jspdf = '1';
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            s.onload = () => callback();
+            s.onerror = () => callback(null);
+            document.head.appendChild(s);
+        }
+
+        function saveNote(region, textarea, statusEl) {
+            const text = textarea.value.trim();
+            // persist locally
+            localStorage.setItem(`note-${region}`, text);
+
+            // visual feedback
+            statusEl.textContent = 'Anotação salva com sucesso!';
+            statusEl.style.opacity = '1';
+            setTimeout(() => {
+                statusEl.style.opacity = '0';
+            }, 2200);
+
+            // prepare PDF content (include simple header)
+            const now = new Date();
+            const dateStr = now.toLocaleString('pt-BR').replace(/[:\/]|, /g, '-');
+            const filename = `anotacao-${region}-${dateStr}.pdf`;
+
+            ensureJsPdf((ok) => {
+                // if jsPDF available, use it to generate and trigger download
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    try {
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+                        const margin = 40;
+                        const pageWidth = doc.internal.pageSize.getWidth() - margin * 2;
+                        doc.setFontSize(14);
+                        doc.text(`Anotação - ${region}`, margin, 60);
+                        doc.setFontSize(10);
+                        doc.text(`Data: ${now.toLocaleString('pt-BR')}`, margin, 80);
+                        doc.setFontSize(12);
+                        // split text into lines that fit page width
+                        const lines = doc.splitTextToSize(text || '(Sem conteúdo)', pageWidth);
+                        doc.text(lines, margin, 110);
+                        doc.save(filename);
+                    } catch (e) {
+                        // fallback to print window
+                        const w = window.open('', '_blank');
+                        w.document.write(`<pre>${escapeHtml(text)}</pre>`);
+                        w.document.close();
+                        w.print();
+                    }
+                } else {
+                    // jsPDF didn't load — fallback: open printable window so user can Save as PDF
+                    const w = window.open('', '_blank');
+                    w.document.write(`<html><head><title>Anotação</title><meta charset="utf-8"><style>body{font-family:Arial,Helvetica,sans-serif;padding:20px}pre{white-space:pre-wrap;word-wrap:break-word}</style></head><body><h2>Anotação - ${escapeHtml(region)}</h2><p><em>Data: ${escapeHtml(now.toLocaleString('pt-BR'))}</em></p><pre>${escapeHtml(text || '(Sem conteúdo)')}</pre></body></html>`);
+                    w.document.close();
+                    w.focus();
+                    // best-effort trigger print dialog
+                    setTimeout(() => w.print(), 300);
+                }
+            });
+        }
+
+        document.querySelectorAll('.save-note-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const region = button.dataset.region;
+                const form = button.closest('.note-form');
+                if (!form) return;
+                const textarea = form.querySelector('textarea');
+                const statusEl = form.querySelector('.save-note-status');
+                if (textarea && statusEl) {
+                    saveNote(region, textarea, statusEl);
+                }
+            });
+        });
+
+        function openLightbox(src, alt) {
+            if (!lightbox || !lightboxImg) return;
+            lightboxImg.src = src;
+            lightboxImg.alt = alt;
+            lightbox.classList.add('visible');
+            lightbox.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeLightbox() {
+            if (!lightbox || !lightboxImg) return;
+            lightbox.classList.remove('visible');
+            lightboxImg.src = '';
+            lightbox.setAttribute('aria-hidden', 'true');
+        }
+
+        document.querySelectorAll('.image-thumb').forEach(button => {
+            button.addEventListener('click', () => {
+                const src = button.getAttribute('data-large');
+                const imgEl = button.querySelector('img');
+                const alt = imgEl ? imgEl.alt : 'Imagem ampliada';
+                openLightbox(src, alt);
+            });
+        });
+
+        if (lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+        if (lightbox) {
+            lightbox.addEventListener('click', (event) => {
+                if (event.target === lightbox) {
+                    closeLightbox();
+                }
+            });
+        }
+
+        const lockedModal = document.getElementById('lockedModal');
+        const lockedModalClose = document.querySelector('.locked-modal-close');
+
+        function showLockedModal(message) {
+            if (!lockedModal) return;
+            const msgEl = document.getElementById('lockedModalMessage');
+            if (msgEl) msgEl.textContent = message || 'Atividade bloqueada. Complete a atividade anterior para liberar esta seção.';
+            lockedModal.classList.add('active');
+            lockedModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeLockedModal() {
+            if (!lockedModal) return;
+            lockedModal.classList.remove('active');
+            lockedModal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (lockedModalClose) lockedModalClose.addEventListener('click', closeLockedModal);
+        if (lockedModal) {
+            lockedModal.addEventListener('click', (event) => {
+                if (event.target === lockedModal) closeLockedModal();
+            });
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                if (lightbox && lightbox.classList.contains('visible')) {
+                    closeLightbox();
+                }
+                if (videoModal && videoModal.classList.contains('active')) {
+                    closeVideoModal();
+                }
+                if (lockedModal && lockedModal.classList.contains('active')) {
+                    closeLockedModal();
+                }
+            }
+        });
+
+        function getYoutubeEmbedUrl(id) {
+            return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1`;
+        }
+
+        function openVideoModal(label, videoId, previewUrl, siteUrl) {
+            if (!videoModal || !videoPlayerIframe) return;
+            if (videoPlayerTitle) videoPlayerTitle.textContent = label;
+            if (videoPlayerLink) {
+                const href = siteUrl || previewUrl || `https://www.youtube.com/watch?v=${videoId}`;
+                videoPlayerLink.href = href;
+                videoPlayerLink.textContent = siteUrl ? 'Abrir site original' : previewUrl ? 'Abrir link original' : 'Abrir no YouTube';
+            }
+            if (videoPlayerNote) videoPlayerNote.textContent = siteUrl
+                ? 'Você está visualizando o site externo dentro do mesmo player. Use os controles do site para mudar a era.'
+                : previewUrl
+                    ? 'Você está visualizando um site dentro da mesma página. Se não carregar, use o link abaixo.'
+                    : isFileProtocol
+                        ? 'Você está abrindo o arquivo localmente com file://. Para assistir o vídeo embutido, abra o projeto em um servidor local ou use o link abaixo.'
+                        : 'Se o vídeo não carregar, use o link abaixo para assistir no YouTube.';
+            videoModal.classList.remove('fullscreen');
+            videoPlayerIframe.src = siteUrl || previewUrl || (isFileProtocol ? '' : getYoutubeEmbedUrl(videoId));
+            videoPlayerIframe.style.display = 'block';
+            videoModal.classList.add('active');
+            videoModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeVideoModal() {
+            if (!videoModal || !videoPlayerIframe) return;
+            videoModal.classList.remove('active');
+            videoPlayerIframe.src = '';
+            videoPlayerIframe.style.display = 'block';
+            videoModal.setAttribute('aria-hidden', 'true');
+        }
+
+        document.querySelectorAll('.video-link').forEach(button => {
+            button.addEventListener('click', () => {
+                const siteUrl = button.getAttribute('data-site');
+                const previewUrl = button.getAttribute('data-url');
+                const videoId = button.getAttribute('data-video');
+                const label = button.textContent.trim();
+                if (siteUrl) {
+                    openVideoModal(label, null, null, siteUrl);
+                } else if (previewUrl) {
+                    openVideoModal(label, null, previewUrl);
+                } else {
+                    openVideoModal(label, videoId);
+                }
+            });
+        });
+
+        if (videoModalClose) videoModalClose.addEventListener('click', closeVideoModal);
+        if (videoModal) {
+            videoModal.addEventListener('click', (event) => {
+                if (event.target === videoModal) {
+                    closeVideoModal();
+                }
+            });
+        }
+
+    })();
+    </script>
+</body>
+</html>
