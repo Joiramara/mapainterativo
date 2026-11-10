@@ -1130,6 +1130,44 @@
             transition: opacity 0.25s ease;
         }
 
+        .stage-export {
+            margin-top: 28px;
+        }
+
+        .export-stage-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 22px;
+            border: none;
+            border-radius: 999px;
+            background: var(--text-dark);
+            color: var(--white);
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            box-shadow: var(--shadow-medium);
+        }
+
+        .export-stage-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(0,0,0,0.16);
+        }
+
+        .export-stage-status {
+            min-height: 1.5em;
+            margin-top: 8px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.9rem;
+        }
+
+        .section-norte .export-stage-status { color: var(--norte-dark); }
+        .section-centro-norte .export-stage-status { color: var(--centro-norte-dark); }
+        .section-sudeste .export-stage-status { color: var(--sudeste-dark); }
+        .section-sudoeste .export-stage-status { color: var(--sudoeste-dark); }
+
         /* ============================================
            FOOTER
            ============================================ */
@@ -1878,14 +1916,14 @@
                             <button type="button" class="video-link" data-site="https://docs.google.com/forms/d/e/1FAIpQLScK6jkcwCQ-06eWgCZBoL7JvPJA_bOybiYPmZr6nlMbz_t7UA/viewform">Diário de bordo</button>
                         </span>
 
-                        <form class="note-form" data-region="centro-norte">
+                        <form class="note-form" data-region="norte">
                             <label class="textarea-label">Suas anotações pessoais:  indique uma pergunta sobre o tema</label>
                             <div class="textarea-wrapper">
                                 <textarea placeholder="Escreva suas anotações aqui..." cols="40" rows="10"></textarea>
                                 <span class="textarea-icon">✏️</span>
                                 <span class="textarea-counter"><span class="char-count">0</span>/500</span>
                             </div>
-                            <button type="button" class="save-note-btn" data-region="centro-norte">Salvar esta anotação</button>
+                            <button type="button" class="save-note-btn" data-region="norte">Salvar esta anotação</button>
                             <div class="save-note-status" aria-live="polite"></div>
                         </form> 
                     </div>
@@ -1899,6 +1937,11 @@
                 <div class="quiz-feedback" id="quiz-norte-feedback"></div>
                 <button class="quiz-next-btn" id="quiz-norte-next" onclick="nextQuestion('norte')">Proxima pergunta →</button>
                 <div class="quiz-score" id="quiz-norte-score" style="display:none;"></div>
+            </div>
+
+            <div class="stage-export">
+                <button type="button" class="export-stage-btn" data-region="norte">📄 Baixar PDF desta etapa</button>
+                <div class="export-stage-status" role="status" aria-live="polite"></div>
             </div>
 
             <button class="back-to-map" onclick="scrollToMap()">
@@ -1985,6 +2028,11 @@
                 <div class="quiz-score" id="quiz-centro-norte-score" style="display:none;"></div> 
             </div>
             
+            <div class="stage-export">
+                <button type="button" class="export-stage-btn" data-region="centro-norte">📄 Baixar PDF desta etapa</button>
+                <div class="export-stage-status" role="status" aria-live="polite"></div>
+            </div>
+
             <button class="back-to-map" onclick="scrollToMap()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5m0 0l7 7m-7-7l7-7"/></svg>
                 Voltar ao Mapa
@@ -2066,6 +2114,11 @@
                 <div class="quiz-score" id="quiz-sudeste-score" style="display:none;"></div>
             </div>
 
+            <div class="stage-export">
+                <button type="button" class="export-stage-btn" data-region="sudeste">📄 Baixar PDF desta etapa</button>
+                <div class="export-stage-status" role="status" aria-live="polite"></div>
+            </div>
+
             <button class="back-to-map" onclick="scrollToMap()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5m0 0l7 7m-7-7l7-7"/></svg>
                 Voltar ao Mapa
@@ -2143,6 +2196,11 @@
                 <div class="quiz-feedback" id="quiz-sudoeste-feedback"></div>
                 <button class="quiz-next-btn" id="quiz-sudoeste-next" onclick="nextQuestion('sudoeste')">Proxima pergunta →</button>
                 <div class="quiz-score" id="quiz-sudoeste-score" style="display:none;"></div>
+            </div>
+
+            <div class="stage-export">
+                <button type="button" class="export-stage-btn" data-region="sudoeste">📄 Baixar PDF desta etapa</button>
+                <div class="export-stage-status" role="status" aria-live="polite"></div>
             </div>
 
             <button class="back-to-map" onclick="scrollToMap()">
@@ -2422,7 +2480,8 @@
             quizState[region] = {
                 currentQuestion: 0,
                 score: 0,
-                answered: false
+                answered: false,
+                answers: []
             };
         });
 
@@ -2470,6 +2529,7 @@
 
             const data = quizData[region];
             const q = data[state.currentQuestion];
+            state.answers[state.currentQuestion] = selectedIndex;
             const optionsEl = document.getElementById(`quiz-${region}-options`);
             const feedbackEl = document.getElementById(`quiz-${region}-feedback`);
             const nextBtn = document.getElementById(`quiz-${region}-next`);
@@ -2553,6 +2613,7 @@
             quizState[region].currentQuestion = 0;
             quizState[region].score = 0;
             quizState[region].answered = false;
+            quizState[region].answers = [];
 
             const questionEl = document.getElementById(`quiz-${region}-question`);
             const optionsEl = document.getElementById(`quiz-${region}-options`);
@@ -2840,6 +2901,159 @@
                 if (textarea && statusEl) {
                     saveNote(region, textarea, statusEl);
                 }
+            });
+        });
+
+        function createStageReport(region) {
+            const section = document.getElementById(`secao-${region}`);
+            const card = section && section.querySelector('.section-card');
+            if (!section || !card || !quizData[region] || !quizState[region]) return null;
+
+            const title = card.querySelector('.section-title')?.textContent.trim() || region;
+            const notes = Array.from(card.querySelectorAll('.note-form'))
+                .filter(form => form.dataset.region === region)
+                .map(form => form.querySelector('textarea')?.value.trim())
+                .filter(Boolean);
+            const questions = quizData[region];
+            const state = quizState[region];
+            const letters = ['A', 'B', 'C', 'D'];
+            const answers = questions.reduce((results, question, index) => {
+                const selected = state.answers[index];
+                if (selected === undefined) return results;
+                const isCorrect = selected === question.correct;
+                results.push({
+                    question: question.question,
+                    answer: `${letters[selected]}) ${question.options[selected]}`,
+                    result: isCorrect ? 'Acerto' : 'Erro',
+                    correctAnswer: isCorrect
+                        ? ''
+                        : `${letters[question.correct]}) ${question.options[question.correct]}`
+                });
+                return results;
+            }, []);
+
+            return {
+                title,
+                region,
+                date: new Date().toLocaleString('pt-BR'),
+                notes,
+                answers,
+                score: state.score
+            };
+        }
+
+        function printStageReport(report, printWindow) {
+            if (!printWindow || printWindow.closed) return false;
+            const notes = report.notes.length
+                ? report.notes.map(note => `<p>${escapeHtml(note)}</p>`).join('')
+                : '<p>Nenhuma anotação registrada.</p>';
+            const answers = report.answers.length
+                ? report.answers.map((answer, index) =>
+                    `<p><strong>${index + 1}. ${escapeHtml(answer.question)}</strong><br>` +
+                    `Sua resposta: ${escapeHtml(answer.answer)} — ${escapeHtml(answer.result)}.` +
+                    (answer.correctAnswer ? `<br>Resposta correta: ${escapeHtml(answer.correctAnswer)}.` : '') +
+                    '</p>'
+                ).join('')
+                : '<p>Nenhuma resposta registrada.</p>';
+            const body = [
+                `<h1>${escapeHtml(report.title)}</h1>`,
+                `<p class="meta">Etapa ${escapeHtml(report.region)} · ${escapeHtml(report.date)}</p>`,
+                '<h2>Anotações</h2>',
+                notes,
+                `<h2>Respostas do quiz (${report.score} acertos)</h2>`,
+                answers
+            ].join('');
+            printWindow.document.open();
+            printWindow.document.write(
+                '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">' +
+                `<title>${escapeHtml(report.title)} - Relatório da etapa</title>` +
+                '<style>body{font:12pt Arial,sans-serif;line-height:1.55;max-width:800px;margin:36px auto;padding:0 24px;color:#243447}' +
+                'h1{font-size:22pt}h2{font-size:15pt;margin-top:28px;border-bottom:1px solid #bbb;padding-bottom:6px}' +
+                '.meta{color:#555;font-size:10pt}p{white-space:pre-wrap;overflow-wrap:anywhere}' +
+                '@media print{body{margin:18mm auto;padding:0}h2{break-after:avoid}}</style>' +
+                `</head><body>${body}</body></html>`
+            );
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 300);
+            return true;
+        }
+
+        function downloadStageReport(report, statusEl) {
+            const printWindow = window.open('', '_blank');
+            ensureJsPdf(() => {
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    try {
+                        const { jsPDF } = window.jspdf;
+                        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+                        const margin = 44;
+                        const pageWidth = doc.internal.pageSize.getWidth() - margin * 2;
+                        const pageHeight = doc.internal.pageSize.getHeight();
+                        let y = margin;
+
+                        function addText(text, size, style = 'normal', spacing = 5) {
+                            doc.setFont('helvetica', style);
+                            doc.setFontSize(size);
+                            const lines = doc.splitTextToSize(text, pageWidth);
+                            const lineHeight = size * 1.35;
+                            lines.forEach(line => {
+                                if (y + lineHeight > pageHeight - margin) {
+                                    doc.addPage();
+                                    y = margin;
+                                }
+                                doc.text(line, margin, y);
+                                y += lineHeight;
+                            });
+                            y += spacing;
+                        }
+
+                        doc.setProperties({ title: `${report.title} - Relatório da etapa` });
+                        addText(report.title, 18, 'bold', 8);
+                        addText(`Etapa ${report.region} · ${report.date}`, 10, 'normal', 18);
+                        addText('Anotações', 14, 'bold', 8);
+                        (report.notes.length ? report.notes : ['Nenhuma anotação registrada.'])
+                            .forEach(note => addText(note, 10, 'normal', 10));
+                        addText(`Respostas do quiz (${report.score} acertos)`, 14, 'bold', 8);
+                        const answers = report.answers.length
+                            ? report.answers.map((answer, index) => [
+                                `${index + 1}. ${answer.question}`,
+                                `Sua resposta: ${answer.answer} — ${answer.result}.`,
+                                answer.correctAnswer ? `Resposta correta: ${answer.correctAnswer}.` : ''
+                            ].filter(Boolean).join('\n'))
+                            : ['Nenhuma resposta registrada.'];
+                        answers.forEach(answer => addText(answer, 10, 'normal', 10));
+
+                        const date = new Date().toISOString().slice(0, 10);
+                        doc.save(`etapa-${report.region}-${date}.pdf`);
+                        if (printWindow && !printWindow.closed) printWindow.close();
+                        statusEl.textContent = 'PDF da etapa baixado com sucesso.';
+                    } catch (error) {
+                        console.error('Não foi possível gerar o PDF da etapa:', error);
+                        if (printStageReport(report, printWindow)) {
+                            statusEl.textContent = 'Não foi possível baixar diretamente. Use Imprimir > Salvar como PDF.';
+                        } else {
+                            statusEl.textContent = 'Não foi possível gerar o PDF. Permita pop-ups e tente novamente.';
+                        }
+                    }
+                    return;
+                }
+
+                if (printStageReport(report, printWindow)) {
+                    statusEl.textContent = 'Biblioteca de PDF indisponível. Use Imprimir > Salvar como PDF.';
+                } else {
+                    statusEl.textContent = 'Não foi possível abrir o relatório. Permita pop-ups e tente novamente.';
+                }
+            });
+        }
+
+        document.querySelectorAll('.export-stage-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const section = button.closest('.section-card');
+                const statusEl = section?.querySelector('.export-stage-status');
+                const report = createStageReport(button.dataset.region);
+                if (!report || !statusEl) return;
+                statusEl.textContent = 'Preparando o PDF da etapa…';
+                downloadStageReport(report, statusEl);
             });
         });
 
